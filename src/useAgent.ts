@@ -13,8 +13,11 @@ import {
   type ConnectionStatus,
 } from "./acp/useAgentConnection";
 import { useSessionActions } from "./session/useSessionActions";
+import { routeSessionUpdate } from "./session/routeUpdate";
 import { emptyTranscript, transcriptReducer, type TranscriptState } from "./session/transcript";
 import type { Usage } from "./session/usage";
+
+import type { SessionModeId, SessionModeState } from "@agentclientprotocol/sdk";
 
 export type { ConnectionStatus };
 
@@ -31,11 +34,15 @@ export interface AgentState {
   canPrompt: boolean;
   /// True while a turn is streaming (a prompt is in flight).
   turnActive: boolean;
+  /// Available modes and the active one, if the agent advertises modes.
+  modes?: SessionModeState;
   /// A permission request awaiting the user's decision, if any.
   permission?: RequestPermissionRequest;
   pickDirectory: () => Promise<void>;
   sendPrompt: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
+  /// Switch the session mode.
+  setMode: (modeId: SessionModeId) => Promise<void>;
   /// Answer the pending permission request.
   resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
@@ -53,14 +60,19 @@ export function useAgent(): AgentState {
   // not work inside a state updater.
   const resolverRef = useRef<((response: RequestPermissionResponse) => void) | null>(null);
 
-  const onUpdate = useCallback((notification: SessionNotification) => {
-    const update = notification.update;
-    if (update.sessionUpdate === "usage_update") {
-      setUsage({ used: update.used, size: update.size, cost: update.cost });
-      return;
-    }
-    dispatch({ kind: "update", update });
-  }, []);
+  const session = useSessionActions(ctxRef, dispatch);
+  const { applyModeUpdate } = session;
+
+  const onUpdate = useCallback(
+    (notification: SessionNotification) => {
+      routeSessionUpdate(notification.update, {
+        onUsage: setUsage,
+        onModeChange: applyModeUpdate,
+        onTranscript: (update) => dispatch({ kind: "update", update }),
+      });
+    },
+    [applyModeUpdate],
+  );
 
   const onPermissionRequest = useCallback((request: RequestPermissionRequest) => {
     return new Promise<RequestPermissionResponse>((resolve) => {
@@ -75,7 +87,6 @@ export function useAgent(): AgentState {
     setPermission(undefined);
   }, []);
 
-  const session = useSessionActions(ctxRef, dispatch);
   const connection = useAgentConnection(ctxRef, onUpdate, onPermissionRequest, session.reset);
 
   return {
@@ -88,10 +99,12 @@ export function useAgent(): AgentState {
     canPrompt:
       connection.status === "connected" && !!session.sessionId && !transcript.turnActive,
     turnActive: transcript.turnActive,
+    modes: session.modes,
     permission,
     pickDirectory: session.pickDirectory,
     sendPrompt: session.sendPrompt,
     cancel: session.cancel,
+    setMode: session.setMode,
     resolvePermission,
     reconnect: connection.reconnect,
   };

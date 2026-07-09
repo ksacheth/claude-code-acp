@@ -16,6 +16,8 @@ function App() {
         status={status}
         agentLabel={agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined}
         usage={usage}
+        modes={agent.modes}
+        onSetMode={(modeId) => void agent.setMode(modeId)}
       />
 
       {error && <pre className="error">{error}</pre>}
