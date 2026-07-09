@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 
@@ -45,6 +45,41 @@ function childChannel(child: ChildProcessWithoutNullStreams): LineChannel {
       };
     },
   };
+}
+
+/// A minimal stdio MCP server exposing one `echo` tool, used to prove a
+/// user-configured MCP server's tool call executes and renders. Speaks
+/// newline-delimited JSON-RPC (the MCP stdio transport).
+const ECHO_MCP_SERVER = `
+const send = (m) => process.stdout.write(JSON.stringify(m) + "\\n");
+const RESULTS = {
+  initialize: (p) => ({ protocolVersion: p?.protocolVersion ?? "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "echo-mcp", version: "0.0.1" } }),
+  "tools/list": () => ({ tools: [{ name: "echo", description: "Echo back the provided text", inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } }] }),
+  "tools/call": (p) => ({ content: [{ type: "text", text: "echo: " + (p?.arguments?.text ?? "") }] }),
+};
+function handle(msg) {
+  const build = RESULTS[msg.method];
+  if (build) send({ jsonrpc: "2.0", id: msg.id, result: build(msg.params) });
+  else if (msg.id !== undefined) send({ jsonrpc: "2.0", id: msg.id, result: {} });
+}
+let buf = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (d) => {
+  buf += d;
+  let i;
+  while ((i = buf.indexOf("\\n")) >= 0) {
+    const line = buf.slice(0, i).trim();
+    buf = buf.slice(i + 1);
+    if (line) { try { handle(JSON.parse(line)); } catch {} }
+  }
+});
+`;
+
+/// Write the echo MCP server to a temp file and return its path.
+function writeEchoServer(): string {
+  const path = join(mkdtempSync(join(tmpdir(), "echo-mcp-")), "server.mjs");
+  writeFileSync(path, ECHO_MCP_SERVER);
+  return path;
 }
 
 const ENGINE = resolve(process.cwd(), "../dist/index.js");
@@ -288,6 +323,53 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 60000);
+
+  it("executes a tool from a user-configured stdio MCP server", async () => {
+    const serverPath = writeEchoServer();
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    const toolCalls: string[] = [];
+    let reply = "";
+    try {
+      const conn = await connectAgent(childChannel(child), {
+        onSessionUpdate: (n) => {
+          if (n.update.sessionUpdate === "tool_call") {
+            toolCalls.push(`${n.update.title} ${JSON.stringify(n.update.rawInput ?? "")}`);
+          }
+          reply += messageChunkText(n.update) ?? "";
+        },
+        onPermissionRequest: async (req) => {
+          const allow = req.options.find((o) => o.kind.startsWith("allow")) ?? req.options[0];
+          return { outcome: { outcome: "selected", optionId: allow.optionId } };
+        },
+      });
+
+      // Configure the echo MCP server exactly as the app does (stdio: no type).
+      const session = await conn.ctx.request(methods.agent.session.new, {
+        cwd: process.cwd(),
+        mcpServers: [{ name: "echo", command: "node", args: [serverPath], env: [] }],
+      });
+
+      await conn.ctx.request(methods.agent.session.prompt, {
+        sessionId: session.sessionId,
+        prompt: [
+          {
+            type: "text",
+            text: "Call the `echo` tool (from the echo MCP server) with text \"banana\", then tell me exactly what it returned.",
+          },
+        ],
+      });
+
+      // The MCP tool call must have streamed like any built-in tool call.
+      expect(toolCalls.some((t) => /echo/i.test(t))).toBe(true);
+      expect(reply.toLowerCase()).toContain("banana");
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 90000);
 
   it("resumes a persisted session and replays its history in a fresh process", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "resume-"));

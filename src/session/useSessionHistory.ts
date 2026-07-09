@@ -3,6 +3,7 @@ import { useCallback, type Dispatch, type MutableRefObject } from "react";
 import { methods, type ClientContext, type SessionInfo } from "@agentclientprotocol/sdk";
 
 import type { SessionsAction } from "./sessions";
+import { toMcpServers, type Settings } from "./settings";
 
 export interface SessionHistory {
   /// List persisted sessions across all directories.
@@ -17,12 +18,13 @@ async function resumeInto(
   ctx: ClientContext,
   info: SessionInfo,
   dispatch: Dispatch<SessionsAction>,
+  settings: Settings,
 ): Promise<void> {
   dispatch({ kind: "create", id: info.sessionId, cwd: info.cwd });
   const response = await ctx.request(methods.agent.session.load, {
     sessionId: info.sessionId,
     cwd: info.cwd,
-    mcpServers: [],
+    mcpServers: toMcpServers(settings.mcpServers),
   });
   if (response.configOptions) {
     dispatch({ kind: "setConfig", sessionId: info.sessionId, configOptions: response.configOptions });
@@ -36,6 +38,7 @@ export function useSessionHistory(
   ctxRef: MutableRefObject<ClientContext | null>,
   dispatch: Dispatch<SessionsAction>,
   openIds: string[],
+  settingsRef: MutableRefObject<Settings>,
 ): SessionHistory {
   const listSessions = useCallback(async (): Promise<SessionInfo[]> => {
     const ctx = ctxRef.current;
@@ -53,9 +56,9 @@ export function useSessionHistory(
         dispatch({ kind: "activate", id: info.sessionId });
         return;
       }
-      await resumeInto(ctx, info, dispatch);
+      await resumeInto(ctx, info, dispatch, settingsRef.current);
     },
-    [ctxRef, dispatch, openIds],
+    [ctxRef, dispatch, openIds, settingsRef],
   );
 
   return { listSessions, resumeSession };

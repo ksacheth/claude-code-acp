@@ -15,6 +15,8 @@ import {
 } from "./acp/useAgentConnection";
 import { useSessionActions } from "./session/useSessionActions";
 import { useSessionHistory } from "./session/useSessionHistory";
+import { useSettings } from "./session/useSettings";
+import type { Settings } from "./session/settings";
 import {
   activeSession,
   emptySessions,
@@ -47,12 +49,20 @@ export interface AgentState {
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
+  /// Persisted app settings and a setter (used by the settings UI).
+  settings: Settings;
+  saveSettings: (next: Settings) => void;
 }
 
 /// Composes the (session-agnostic) connection with the multi-session store. The
 /// `ctxRef` is shared: the connection writes it, session actions read it.
 export function useAgent(): AgentState {
   const ctxRef = useRef<ClientContext | null>(null);
+  const { settings, save: saveSettings } = useSettings();
+  // Shared like ctxRef: sub-hooks read the latest settings at action time, so
+  // edits apply to the next session / reconnect without re-render churn.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const [sessions, dispatch] = useReducer(sessionsReducer, emptySessions);
   const [permission, setPermission] = useState<RequestPermissionRequest>();
   // The pending resolver is held in a ref so resolving is a plain side effect.
@@ -78,8 +88,8 @@ export function useAgent(): AgentState {
   const onReset = useCallback(() => dispatch({ kind: "clear" }), []);
 
   const openIds = sessions.sessions.map((s) => s.id);
-  const actions = useSessionActions(ctxRef, dispatch, sessions.activeId);
-  const history = useSessionHistory(ctxRef, dispatch, openIds);
+  const actions = useSessionActions(ctxRef, dispatch, sessions.activeId, settingsRef);
+  const history = useSessionHistory(ctxRef, dispatch, openIds, settingsRef);
   const connection = useAgentConnection(ctxRef, onUpdate, onPermissionRequest, onReset);
 
   const active = activeSession(sessions);
@@ -102,5 +112,7 @@ export function useAgent(): AgentState {
     resumeSession: history.resumeSession,
     resolvePermission,
     reconnect: connection.reconnect,
+    settings,
+    saveSettings,
   };
 }

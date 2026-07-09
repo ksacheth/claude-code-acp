@@ -4,6 +4,7 @@ import { methods, type ClientContext } from "@agentclientprotocol/sdk";
 import { open } from "@tauri-apps/plugin-dialog";
 
 import type { SessionsAction } from "./sessions";
+import { toMcpServers, type Settings } from "./settings";
 
 export interface SessionActions {
   /// Open a directory picker and start a new session rooted there (made active).
@@ -27,6 +28,30 @@ interface TurnDeps {
   dispatch: Dispatch<SessionsAction>;
 }
 
+/// Apply the user's preferred default mode/model to a freshly created session
+/// via the standard set_config_option. A default the deployment doesn't offer
+/// is logged and skipped — it must never fail session creation.
+async function applyDefaults(
+  ctx: ClientContext,
+  sessionId: string,
+  settings: Settings,
+  dispatch: Dispatch<SessionsAction>,
+): Promise<void> {
+  const targets: [string, string | undefined][] = [
+    ["mode", settings.defaultMode],
+    ["model", settings.defaultModel],
+  ];
+  for (const [configId, value] of targets) {
+    if (!value) continue;
+    try {
+      const res = await ctx.request(methods.agent.session.setConfigOption, { sessionId, configId, value });
+      dispatch({ kind: "setConfig", sessionId, configOptions: res.configOptions });
+    } catch (err) {
+      console.warn(`[claude-tauri] could not apply default ${configId}=${value}:`, err);
+    }
+  }
+}
+
 /// Run one prompt turn in a session: open the assistant message, stream the
 /// reply, then close the turn even if the request rejects or is cancelled.
 async function runPromptTurn({ ctx, sessionId, text, seq, dispatch }: TurnDeps): Promise<void> {
@@ -48,6 +73,7 @@ export function useSessionActions(
   ctxRef: MutableRefObject<ClientContext | null>,
   dispatch: Dispatch<SessionsAction>,
   activeId: string | undefined,
+  settingsRef: MutableRefObject<Settings>,
 ): SessionActions {
   const turnSeq = useRef(0);
 
@@ -66,9 +92,10 @@ export function useSessionActions(
     if (!ctx) return;
     const selected = await open({ directory: true, multiple: false });
     if (typeof selected !== "string") return;
+    const settings = settingsRef.current;
     const response = await ctx.request(methods.agent.session.new, {
       cwd: selected,
-      mcpServers: [],
+      mcpServers: toMcpServers(settings.mcpServers),
     });
     dispatch({
       kind: "create",
@@ -76,7 +103,8 @@ export function useSessionActions(
       cwd: selected,
       configOptions: response.configOptions ?? undefined,
     });
-  }, [ctxRef, dispatch]);
+    await applyDefaults(ctx, response.sessionId, settings, dispatch);
+  }, [ctxRef, dispatch, settingsRef]);
 
   const switchSession = useCallback((id: string) => dispatch({ kind: "activate", id }), [dispatch]);
 
