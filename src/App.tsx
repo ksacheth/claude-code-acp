@@ -2,40 +2,52 @@ import "./App.css";
 import { DisconnectBanner } from "./components/DisconnectBanner";
 import { Header } from "./components/Header";
 import { PermissionModal } from "./components/PermissionModal";
+import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
 import { useAgent } from "./useAgent";
 
 function App() {
   const agent = useAgent();
   const { status, agentInfo, error, active } = agent;
+  const connected = status === "connected";
 
   return (
-    <main className="app">
-      <Header
-        status={status}
-        agentInfo={agentInfo}
-        usage={active?.usage}
-        modes={active?.modes}
-        onSetMode={(modeId) => void agent.setMode(modeId)}
+    <div className="app-shell">
+      <Sidebar
+        sessions={agent.sessions}
+        activeId={agent.activeId}
+        onSelect={agent.switchSession}
+        onNew={() => void agent.newSession()}
+        disabled={!connected}
       />
 
-      {error && <pre className="error">{error}</pre>}
+      <main className="app">
+        <Header
+          status={status}
+          agentInfo={agentInfo}
+          usage={active?.usage}
+          modes={active?.modes}
+          onSetMode={(modeId) => void agent.setMode(modeId)}
+        />
 
-      <DisconnectBanner status={status} onReconnect={() => void agent.reconnect()} />
+        {error && <pre className="error">{error}</pre>}
 
-      <Workspace
-        active={active}
-        connected={status === "connected"}
-        canPrompt={agent.canPrompt}
-        onNewSession={() => void agent.newSession()}
-        onSend={(text) => void agent.sendPrompt(text)}
-        onCancel={() => void agent.cancel()}
-      />
+        <DisconnectBanner status={status} onReconnect={() => void agent.reconnect()} />
+
+        <Workspace
+          active={active}
+          connected={connected}
+          canPrompt={agent.canPrompt}
+          onNewSession={() => void agent.newSession()}
+          onSend={(text) => void agent.sendPrompt(text)}
+          onCancel={() => void agent.cancel()}
+        />
+      </main>
 
       {agent.permission && (
         <PermissionModal request={agent.permission} onResolve={agent.resolvePermission} />
       )}
-    </main>
+    </div>
   );
 }
 

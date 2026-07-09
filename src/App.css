@@ -18,10 +18,89 @@ body {
   margin: 0;
 }
 
+.app-shell {
+  display: flex;
+  height: 100vh;
+}
+
 .app {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
   height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 15em;
+  flex: none;
+  border-right: 1px solid #e6e6e6;
+  background: rgba(127, 127, 127, 0.05);
+  overflow-y: auto;
+}
+
+.new-session {
+  margin: 0.6em;
+  flex: none;
+}
+
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.4em;
+  overflow-y: auto;
+}
+
+.session-item {
+  padding: 0.45em 0.55em;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 0.2em;
+}
+
+.session-item:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.session-item.active {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.session-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 500;
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-spinner {
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: #e0a800;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+.session-cwd {
+  font-size: 0.72em;
+  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sidebar {
+    border-color: #333;
+  }
 }
 
 .app-header {
