@@ -6,12 +6,14 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onHistory: () => void;
+  onSettings: () => void;
   disabled: boolean;
 }
 
 /// The session list: one entry per open session (title + directory, active
-/// highlighted, a dot while its turn is streaming) plus New-session and History.
-export function Sidebar({ sessions, activeId, onSelect, onNew, onHistory, disabled }: SidebarProps) {
+/// highlighted, a dot while its turn is streaming) plus New-session, History,
+/// and Settings.
+export function Sidebar({ sessions, activeId, onSelect, onNew, onHistory, onSettings, disabled }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar-actions">
@@ -20,6 +22,9 @@ export function Sidebar({ sessions, activeId, onSelect, onNew, onHistory, disabl
         </button>
         <button className="history-button" onClick={onHistory} disabled={disabled} title="Session history">
           History
+        </button>
+        <button className="settings-button" onClick={onSettings} title="Settings">
+          Settings
         </button>
       </div>
       <ul className="session-list">

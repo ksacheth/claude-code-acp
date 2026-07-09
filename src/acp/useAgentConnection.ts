@@ -10,6 +10,7 @@ import type {
 
 import { connectAgent, type AgentConnection } from "./connection";
 import { startAgent, stopAgent, tauriChannel } from "./tauriChannel";
+import type { Settings } from "../session/settings";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
@@ -20,16 +21,24 @@ export interface AgentConnectionHandle {
   reconnect: () => Promise<void>;
 }
 
+/// The event handlers the connection drives: streaming updates, permission
+/// prompts, and a pre-reconnect reset so callers can clear session state.
+export interface ConnectionHandlers {
+  onUpdate: (notification: SessionNotification) => void;
+  onPermissionRequest: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>;
+  onReset: () => void;
+}
+
 /// Owns the engine process + ACP connection lifecycle: start, handshake, track
 /// status, and reconnect. Writes the live `ClientContext` into `ctxRef` (shared
-/// with session actions) and forwards session updates to `onUpdate`. `onReset`
-/// runs before a reconnect so callers can clear session state.
+/// with session actions) and reads the spawn config from `settingsRef` at
+/// connect time.
 export function useAgentConnection(
   ctxRef: MutableRefObject<ClientContext | null>,
-  onUpdate: (notification: SessionNotification) => void,
-  onPermissionRequest: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>,
-  onReset: () => void,
+  settingsRef: MutableRefObject<Settings>,
+  handlers: ConnectionHandlers,
 ): AgentConnectionHandle {
+  const { onUpdate, onPermissionRequest, onReset } = handlers;
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [agentInfo, setAgentInfo] = useState<AgentConnection["agentInfo"]>();
   const [error, setError] = useState<string>();
@@ -41,7 +50,8 @@ export function useAgentConnection(
     setStatus("connecting");
     const startedAt = performance.now();
     try {
-      await startAgent();
+      const { enginePath, nodePath, env } = settingsRef.current;
+      await startAgent({ enginePath, nodePath, env });
       const conn = await connectAgent(tauriChannel, {
         onSessionUpdate: onUpdate,
         onPermissionRequest,
@@ -67,7 +77,7 @@ export function useAgentConnection(
         setStatus("error");
       }
     }
-  }, [ctxRef, onUpdate, onPermissionRequest]);
+  }, [ctxRef, onUpdate, onPermissionRequest, settingsRef]);
 
   const reconnect = useCallback(async () => {
     await stopAgent().catch(() => {});

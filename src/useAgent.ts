@@ -90,7 +90,7 @@ export function useAgent(): AgentState {
   const openIds = sessions.sessions.map((s) => s.id);
   const actions = useSessionActions(ctxRef, dispatch, sessions.activeId, settingsRef);
   const history = useSessionHistory(ctxRef, dispatch, openIds, settingsRef);
-  const connection = useAgentConnection(ctxRef, onUpdate, onPermissionRequest, onReset);
+  const connection = useAgentConnection(ctxRef, settingsRef, { onUpdate, onPermissionRequest, onReset });
 
   const active = activeSession(sessions);
 

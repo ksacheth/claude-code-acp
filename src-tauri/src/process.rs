@@ -30,11 +30,16 @@ pub struct AgentHandle {
 /// Spawn `program args...` with piped stdio, streaming each stdout/stderr line
 /// to the corresponding callback and reporting the exit code once (if any).
 ///
+/// `env` entries are added to (not replaced onto) the inherited environment —
+/// this is how the settings UI supplies a full `PATH` so a Finder-launched
+/// `.app`, which inherits no shell environment, can still find `node`.
+///
 /// The callbacks run on dedicated reader threads and must be `Send`.
 pub fn spawn_agent(
     program: &str,
     args: &[String],
     cwd: Option<&str>,
+    env: &[(String, String)],
     on_stdout: impl Fn(String) + Send + 'static,
     on_stderr: impl Fn(String) + Send + 'static,
     on_exit: impl Fn(Option<i32>) + Send + 'static,
@@ -44,6 +49,9 @@ pub fn spawn_agent(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    for (key, value) in env {
+        cmd.env(key, value);
+    }
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
     }
@@ -187,6 +195,7 @@ mod tests {
             "node",
             &node(script),
             None,
+            &[],
             move |line| tx.send(line).unwrap(),
             noop_stderr(),
             |_| {},
@@ -209,6 +218,7 @@ mod tests {
             "node",
             &node(script),
             None,
+            &[],
             |_| {},
             noop_stderr(),
             move |code| tx.send(code).unwrap(),
@@ -229,6 +239,7 @@ mod tests {
             "node",
             &node(script),
             None,
+            &[],
             |_| {},
             noop_stderr(),
             move |code| tx.send(code).unwrap(),
@@ -243,9 +254,32 @@ mod tests {
     }
 
     #[test]
+    fn passes_env_to_the_child() {
+        // Print an env var the parent never set; it must reach the child.
+        let script = "process.stdout.write('V=' + (process.env.CLAUDE_TAURI_TEST || 'unset') + '\\n');";
+        let (tx, rx) = channel();
+        let handle = spawn_agent(
+            "node",
+            &node(script),
+            None,
+            &[("CLAUDE_TAURI_TEST".to_string(), "reached".to_string())],
+            move |line| {
+                let _ = tx.send(line);
+            },
+            noop_stderr(),
+            |_| {},
+        )
+        .expect("spawn");
+
+        let got = rx.recv_timeout(Duration::from_secs(5)).expect("stdout line");
+        assert_eq!(got, "V=reached", "child env must include the supplied vars");
+        handle.shutdown();
+    }
+
+    #[test]
     fn write_line_fails_after_shutdown() {
         let script = "process.stdin.resume();";
-        let handle = spawn_agent("node", &node(script), None, |_| {}, noop_stderr(), |_| {})
+        let handle = spawn_agent("node", &node(script), None, &[], |_| {}, noop_stderr(), |_| {})
             .expect("spawn");
         handle.shutdown();
         assert!(
@@ -271,6 +305,7 @@ mod tests {
             "node",
             &[engine.to_string()],
             None,
+            &[],
             move |line| {
                 let _ = tx.send(line);
             },

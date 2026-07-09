@@ -6,6 +6,7 @@ import { DisconnectBanner } from "./components/DisconnectBanner";
 import { Header } from "./components/Header";
 import { HistoryBrowser } from "./components/HistoryBrowser";
 import { PermissionModal } from "./components/PermissionModal";
+import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
 import { useAgent } from "./useAgent";
@@ -17,6 +18,7 @@ function App() {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState<SessionInfo[] | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const openHistory = () => {
     setHistoryList(null);
     setHistoryOpen(true);
@@ -31,6 +33,7 @@ function App() {
         onSelect={agent.switchSession}
         onNew={() => void agent.newSession()}
         onHistory={openHistory}
+        onSettings={() => setSettingsOpen(true)}
         disabled={!connected}
       />
 
@@ -70,6 +73,14 @@ function App() {
             setHistoryOpen(false);
           }}
           onClose={() => setHistoryOpen(false)}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          settings={agent.settings}
+          onSave={agent.saveSettings}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>

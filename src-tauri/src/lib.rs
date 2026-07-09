@@ -11,9 +11,10 @@ use process::{spawn_agent, AgentHandle};
 struct AgentState(Mutex<Option<AgentHandle>>);
 
 /// Start the agent subprocess. `command` is the executable (e.g. `node`) and
-/// `args` its arguments (e.g. the engine's `dist/index.js` path). Stdout,
-/// stderr, and exit are forwarded to the webview as `agent-stdout`,
-/// `agent-stderr`, and `agent-exit` events.
+/// `args` its arguments (e.g. the engine's `dist/index.js` path). `env` adds
+/// variables to the child's environment (e.g. a full `PATH` for a Finder
+/// launch). Stdout, stderr, and exit are forwarded to the webview as
+/// `agent-stdout`, `agent-stderr`, and `agent-exit` events.
 #[tauri::command]
 fn agent_start(
     app: AppHandle,
@@ -21,6 +22,7 @@ fn agent_start(
     command: String,
     args: Vec<String>,
     cwd: Option<String>,
+    env: Option<Vec<(String, String)>>,
 ) -> Result<(), String> {
     let mut slot = state.0.lock().expect("agent state");
     if slot.is_some() {
@@ -34,6 +36,7 @@ fn agent_start(
         &command,
         &args,
         cwd.as_deref(),
+        &env.unwrap_or_default(),
         move |line| {
             let _ = out_app.emit("agent-stdout", line);
         },
