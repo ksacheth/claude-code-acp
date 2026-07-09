@@ -3,6 +3,10 @@
 Source: `SPEC.md` §2 M2. Make a coding turn fully auditable: every tool call,
 its result, every permission decision, diffs, and the plan — all visible.
 
+**Status: M2 COMPLETE.** All four tasks landed. A single live multi-step task
+was observed streaming plan updates, tool calls, thinking, and usage together —
+the whole M2 surface through one turn. Code Health gate clean.
+
 ## What the engine gives us (verified)
 
 - `tool_call` — `{ toolCallId, title, kind?, status?, content?, locations?,

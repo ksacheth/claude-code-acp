@@ -23,6 +23,17 @@ Plan: `tasks/plan.md` (approved: yes) — **M0 COMPLETE**
 - Live acceptance: streaming reply, thinking, and cancel all pass against the
   real engine (gated suite, `RUN_LIVE_PROMPT=1`).
 
+## M2 — Tool calls & permissions (COMPLETE)
+
+- [x] M2-T1 — tool calls + LCS file diffs (kind/status/expandable raw io)
+- [x] M2-T2 — permission prompts (modal with the agent's real options)
+- [x] M2-T3 — session mode switcher (Manual/Auto/Accept Edits/Plan/…)
+- [x] M2-T4 — live plan checklist
+- Live acceptance: gated suite adds a tool-call test (permission granted); a
+  multi-step task streams plan + tool calls + thinking + usage in one turn.
+- Architecture: session updates routed by a pure `routeSessionUpdate`
+  (usage/mode/plan/transcript); permission resolved via a ref-held resolver.
+
 ## Known debt (carry forward)
 
 - ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2 by splitting into
