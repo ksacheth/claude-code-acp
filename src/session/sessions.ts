@@ -33,6 +33,7 @@ export type SessionsAction =
   | { kind: "activate"; id: string }
   | { kind: "remove"; id: string }
   | { kind: "clear" }
+  | { kind: "setModes"; sessionId: string; modes: SessionModeState }
   | { kind: "submit"; sessionId: string; userId: string; assistantId: string; text: string }
   | { kind: "end"; sessionId: string }
   | { kind: "update"; sessionId: string; update: SessionUpdate };
@@ -55,6 +56,8 @@ function applyUpdate(session: SessionState, update: SessionUpdate): SessionState
         : session;
     case "plan":
       return { ...session, plan: update.entries };
+    case "session_info_update":
+      return update.title ? { ...session, title: update.title } : session;
     default:
       return { ...session, transcript: transcriptReducer(session.transcript, { kind: "update", update }) };
   }
@@ -82,6 +85,22 @@ function applyToSession(session: SessionState, action: SessionsAction): SessionS
   }
 }
 
+/// Add a new session (made active). Idempotent: re-creating an already-open
+/// session just activates it (never blanks its transcript — matters on resume).
+function createSession(state: SessionsState, id: string, cwd: string, modes?: SessionModeState): SessionsState {
+  if (state.sessions.some((s) => s.id === id)) {
+    return { ...state, activeId: id };
+  }
+  const session: SessionState = {
+    id,
+    cwd,
+    title: titleFromCwd(cwd),
+    transcript: emptyTranscript,
+    modes,
+  };
+  return { sessions: [...state.sessions, session], activeId: id };
+}
+
 /// Pick the next active session after `removedId` leaves (the last remaining).
 function nextActive(sessions: SessionState[], removedId: string, activeId?: string): string | undefined {
   if (activeId !== removedId) return activeId;
@@ -93,20 +112,19 @@ function nextActive(sessions: SessionState[], removedId: string, activeId?: stri
 /// touch that session, so concurrent turns in different sessions stay isolated.
 export function sessionsReducer(state: SessionsState, action: SessionsAction): SessionsState {
   switch (action.kind) {
-    case "create": {
-      const session: SessionState = {
-        id: action.id,
-        cwd: action.cwd,
-        title: titleFromCwd(action.cwd),
-        transcript: emptyTranscript,
-        modes: action.modes,
-      };
-      return { sessions: [...state.sessions, session], activeId: action.id };
-    }
+    case "create":
+      return createSession(state, action.id, action.cwd, action.modes);
     case "activate":
       return { ...state, activeId: action.id };
     case "clear":
       return emptySessions;
+    case "setModes":
+      return {
+        ...state,
+        sessions: state.sessions.map((s) =>
+          s.id === action.sessionId ? { ...s, modes: action.modes } : s,
+        ),
+      };
     case "remove":
       return {
         sessions: state.sessions.filter((s) => s.id !== action.id),

@@ -4,6 +4,7 @@ import type {
   ClientContext,
   RequestPermissionRequest,
   RequestPermissionResponse,
+  SessionInfo,
   SessionModeId,
   SessionNotification,
 } from "@agentclientprotocol/sdk";
@@ -14,6 +15,7 @@ import {
   type ConnectionStatus,
 } from "./acp/useAgentConnection";
 import { useSessionActions } from "./session/useSessionActions";
+import { useSessionHistory } from "./session/useSessionHistory";
 import {
   activeSession,
   emptySessions,
@@ -42,6 +44,8 @@ export interface AgentState {
   sendPrompt: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
   setMode: (modeId: SessionModeId) => Promise<void>;
+  listSessions: () => Promise<SessionInfo[]>;
+  resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
 }
@@ -74,7 +78,9 @@ export function useAgent(): AgentState {
 
   const onReset = useCallback(() => dispatch({ kind: "clear" }), []);
 
+  const openIds = sessions.sessions.map((s) => s.id);
   const actions = useSessionActions(ctxRef, dispatch, sessions.activeId);
+  const history = useSessionHistory(ctxRef, dispatch, openIds);
   const connection = useAgentConnection(ctxRef, onUpdate, onPermissionRequest, onReset);
 
   const active = activeSession(sessions);
@@ -93,6 +99,8 @@ export function useAgent(): AgentState {
     sendPrompt: actions.sendPrompt,
     cancel: actions.cancel,
     setMode: actions.setMode,
+    listSessions: history.listSessions,
+    resumeSession: history.resumeSession,
     resolvePermission,
     reconnect: connection.reconnect,
   };

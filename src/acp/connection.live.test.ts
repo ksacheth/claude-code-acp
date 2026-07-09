@@ -1,13 +1,22 @@
 import { describe, it, expect } from "vitest";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve, join } from "node:path";
 
-import { methods } from "@agentclientprotocol/sdk";
+import { methods, type SessionUpdate } from "@agentclientprotocol/sdk";
 
 import { connectAgent } from "./connection";
 import type { LineChannel } from "./transport";
+
+/// Text of a message chunk (agent or user), or null for other updates.
+function messageChunkText(update: SessionUpdate): string | null {
+  if (update.sessionUpdate !== "agent_message_chunk" && update.sessionUpdate !== "user_message_chunk") {
+    return null;
+  }
+  return update.content.type === "text" ? update.content.text : null;
+}
 
 /// A real end-to-end prompt against the engine, exercising the model with the
 /// user's Claude Code auth. Costs tokens and needs network, so it is gated
@@ -179,9 +188,8 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
     try {
       const conn = await connectAgent(childChannel(child), {
         onSessionUpdate: (n) => {
-          if (n.update.sessionUpdate === "agent_message_chunk" && n.update.content.type === "text") {
-            textBySession[n.sessionId] = (textBySession[n.sessionId] ?? "") + n.update.content.text;
-          }
+          const text = messageChunkText(n.update);
+          if (text) textBySession[n.sessionId] = (textBySession[n.sessionId] ?? "") + text;
         },
       });
 
@@ -209,6 +217,43 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
     } finally {
       child.stdin.end();
       child.kill();
+    }
+  }, 90000);
+
+  it("resumes a persisted session and replays its history in a fresh process", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "resume-"));
+    const codeword = "xyzzy";
+
+    // Process 1: create a session and exchange a message, then quit.
+    const first = spawn("node", [ENGINE], { stdio: ["pipe", "pipe", "pipe"] }) as ChildProcessWithoutNullStreams;
+    let sessionId = "";
+    try {
+      const conn = await connectAgent(childChannel(first));
+      const created = await conn.ctx.request(methods.agent.session.new, { cwd, mcpServers: [] });
+      sessionId = created.sessionId;
+      await conn.ctx.request(methods.agent.session.prompt, {
+        sessionId,
+        prompt: [{ type: "text", text: `Remember this codeword and reply with it: ${codeword}` }],
+      });
+    } finally {
+      first.stdin.end();
+      first.kill();
+    }
+
+    // Process 2: a fresh engine loads that session; its history must replay.
+    const second = spawn("node", [ENGINE], { stdio: ["pipe", "pipe", "pipe"] }) as ChildProcessWithoutNullStreams;
+    let replayed = "";
+    try {
+      const conn = await connectAgent(childChannel(second), {
+        onSessionUpdate: (n) => {
+          replayed += messageChunkText(n.update) ?? "";
+        },
+      });
+      await conn.ctx.request(methods.agent.session.load, { sessionId, cwd, mcpServers: [] });
+      expect(replayed.toLowerCase()).toContain(codeword);
+    } finally {
+      second.stdin.end();
+      second.kill();
     }
   }, 90000);
 });

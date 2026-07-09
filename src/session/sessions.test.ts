@@ -96,4 +96,30 @@ describe("sessionsReducer", () => {
     expect(state.sessions).toHaveLength(0);
     expect(state.activeId).toBeUndefined();
   });
+
+  it("updates a session's title from session_info_update", () => {
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    state = sessionsReducer(state, {
+      kind: "update",
+      sessionId: "A",
+      update: { sessionUpdate: "session_info_update", title: "Fix the parser" } as SessionUpdate,
+    });
+    expect(activeSession(state)?.title).toBe("Fix the parser");
+  });
+
+  it("attaches modes on setModes", () => {
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    const modes = { currentModeId: "plan", availableModes: [{ id: "plan", name: "Plan" }] };
+    state = sessionsReducer(state, { kind: "setModes", sessionId: "A", modes });
+    expect(activeSession(state)?.modes).toEqual(modes);
+  });
+
+  it("create is idempotent — re-creating an open session preserves its transcript", () => {
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    state = sessionsReducer(state, { kind: "submit", sessionId: "A", userId: "u", assistantId: "a", text: "hi" });
+    // Re-create (as a resume of an already-open session) must not blank it.
+    state = sessionsReducer(state, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    expect(state.sessions).toHaveLength(1);
+    expect(activeSession(state)?.transcript.messages).toHaveLength(2);
+  });
 });
