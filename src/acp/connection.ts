@@ -3,6 +3,7 @@ import {
   methods,
   type ClientContext,
   type InitializeResponse,
+  type RequestPermissionRequest,
   type RequestPermissionResponse,
   type SessionNotification,
 } from "@agentclientprotocol/sdk";
@@ -12,6 +13,8 @@ import { createLineStream, type LineChannel } from "./transport";
 export interface ConnectHandlers {
   /// Streaming session updates: message/thought chunks, tool calls, plans, usage.
   onSessionUpdate?: (update: SessionNotification) => void;
+  /// Decide a permission request. Defaults to auto-cancel (logged) when unset.
+  onPermissionRequest?: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>;
 }
 
 export interface AgentConnection {
@@ -28,8 +31,9 @@ export interface AgentConnection {
 /// Connect to a running agent over `channel` and complete the `initialize`
 /// handshake. The agent process must already be started.
 ///
-/// M0 advertises no client capabilities and auto-cancels permission requests
-/// (logged), matching the SPEC — real permission UI and fs access arrive in M2.
+/// Advertises no client fs capability (the engine's SDK does its own file I/O).
+/// Permission requests are routed to `onPermissionRequest`, or auto-cancelled
+/// when no handler is provided.
 export async function connectAgent(
   channel: LineChannel,
   handlers: ConnectHandlers = {},
@@ -40,9 +44,10 @@ export async function connectAgent(
     .onNotification(methods.client.session.update, (ctx) => {
       handlers.onSessionUpdate?.(ctx.params);
     })
-    .onRequest(methods.client.session.requestPermission, async (ctx): Promise<RequestPermissionResponse> => {
-      console.warn("[acp] permission request auto-cancelled (M0):", ctx.params);
-      return { outcome: { outcome: "cancelled" } };
+    .onRequest(methods.client.session.requestPermission, (ctx): Promise<RequestPermissionResponse> => {
+      if (handlers.onPermissionRequest) return handlers.onPermissionRequest(ctx.params);
+      console.warn("[acp] permission request auto-cancelled (no handler):", ctx.params);
+      return Promise.resolve({ outcome: { outcome: "cancelled" } });
     })
     .connect(stream);
 

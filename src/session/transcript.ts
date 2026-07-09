@@ -1,6 +1,22 @@
-import type { SessionUpdate } from "@agentclientprotocol/sdk";
+import type {
+  SessionUpdate,
+  ToolCallContent,
+  ToolCallStatus,
+  ToolKind,
+} from "@agentclientprotocol/sdk";
 
 export type Role = "user" | "assistant";
+
+/// A tool call as accumulated from `tool_call` + `tool_call_update` streams.
+export interface ToolCallView {
+  id: string;
+  title: string;
+  kind: ToolKind;
+  status: ToolCallStatus;
+  rawInput?: unknown;
+  rawOutput?: unknown;
+  content: ToolCallContent[];
+}
 
 export interface Message {
   id: string;
@@ -9,6 +25,8 @@ export interface Message {
   text: string;
   /// Accumulated extended-thinking text for assistant messages ("" if none).
   thought: string;
+  /// Tool calls made during this assistant turn (merged by id).
+  toolCalls: ToolCallView[];
   /// True while the assistant message is still receiving chunks.
   streaming: boolean;
 }
@@ -48,14 +66,14 @@ function editOpenAssistant(
     role: "assistant",
     text: "",
     thought: "",
+    toolCalls: [],
     streaming: true,
   };
   return { ...state, messages: [...state.messages, edit(opened)] };
 }
 
-/// Route a streaming update into the open assistant message. Answer text and
-/// thinking text stream the same way into different fields; everything else
-/// (tool calls, plans, usage) is handled outside the transcript.
+/// Route a text/thought chunk into the open assistant message. Answer text and
+/// thinking text stream the same way into different fields.
 function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptState {
   const isMessage = update.sessionUpdate === "agent_message_chunk";
   const isThought = update.sessionUpdate === "agent_thought_chunk";
@@ -65,6 +83,48 @@ function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptSt
     return editOpenAssistant(state, (m) => ({ ...m, [field]: m[field] + chunk }));
   }
   return state;
+}
+
+/// Merge a `tool_call_update`'s defined fields onto an existing tool call.
+function mergeToolCall(
+  call: ToolCallView,
+  update: Extract<SessionUpdate, { sessionUpdate: "tool_call_update" }>,
+): ToolCallView {
+  return {
+    ...call,
+    title: update.title ?? call.title,
+    kind: update.kind ?? call.kind,
+    status: update.status ?? call.status,
+    rawInput: update.rawInput ?? call.rawInput,
+    rawOutput: update.rawOutput ?? call.rawOutput,
+    content: update.content ?? call.content,
+  };
+}
+
+/// Add a new tool call (on `tool_call`) or merge into an existing one by id
+/// (on `tool_call_update`), within the open assistant message.
+function applyToolCall(
+  state: TranscriptState,
+  update: Extract<SessionUpdate, { sessionUpdate: "tool_call" | "tool_call_update" }>,
+): TranscriptState {
+  if (update.sessionUpdate === "tool_call") {
+    const call: ToolCallView = {
+      id: update.toolCallId,
+      title: update.title,
+      kind: update.kind ?? "other",
+      status: update.status ?? "pending",
+      rawInput: update.rawInput,
+      rawOutput: update.rawOutput,
+      content: update.content ?? [],
+    };
+    return editOpenAssistant(state, (m) => ({ ...m, toolCalls: [...m.toolCalls, call] }));
+  }
+  return editOpenAssistant(state, (m) => ({
+    ...m,
+    toolCalls: m.toolCalls.map((call) =>
+      call.id === update.toolCallId ? mergeToolCall(call, update) : call,
+    ),
+  }));
 }
 
 /// Assembles streaming session updates into a chat transcript.
@@ -82,13 +142,32 @@ export function transcriptReducer(
         turnActive: true,
         messages: [
           ...state.messages,
-          { id: action.userId, role: "user", text: action.text, thought: "", streaming: false },
-          { id: action.assistantId, role: "assistant", text: "", thought: "", streaming: true },
+          {
+            id: action.userId,
+            role: "user",
+            text: action.text,
+            thought: "",
+            toolCalls: [],
+            streaming: false,
+          },
+          {
+            id: action.assistantId,
+            role: "assistant",
+            text: "",
+            thought: "",
+            toolCalls: [],
+            streaming: true,
+          },
         ],
       };
 
-    case "update":
-      return applyChunk(state, action.update);
+    case "update": {
+      const update = action.update;
+      if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") {
+        return applyToolCall(state, update);
+      }
+      return applyChunk(state, update);
+    }
 
     case "end":
       return {

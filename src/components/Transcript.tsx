@@ -1,4 +1,5 @@
 import { Markdown } from "./Markdown";
+import { ToolCall } from "./ToolCall";
 import type { Message } from "../session/transcript";
 
 interface TranscriptViewProps {
@@ -35,6 +36,13 @@ function MessageView({ message: m }: { message: Message }) {
     <div className={`message message-${m.role}`}>
       <div className="role">{m.role}</div>
       {m.thought && <ThoughtBlock thought={m.thought} streaming={m.streaming} />}
+      {m.toolCalls.length > 0 && (
+        <div className="toolcalls">
+          {m.toolCalls.map((call) => (
+            <ToolCall key={call.id} call={call} />
+          ))}
+        </div>
+      )}
       {showText && (
         <div className="text">
           {isAssistant ? <Markdown text={m.text} /> : m.text}

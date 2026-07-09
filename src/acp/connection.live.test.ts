@@ -133,4 +133,40 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 60000);
+
+  it("streams a tool call when the agent uses a tool (permission granted)", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    const toolTitles: string[] = [];
+    try {
+      const conn = await connectAgent(childChannel(child), {
+        onSessionUpdate: (n) => {
+          if (n.update.sessionUpdate === "tool_call") toolTitles.push(n.update.title);
+        },
+        onPermissionRequest: async (req) => {
+          const allow = req.options.find((o) => o.kind.startsWith("allow")) ?? req.options[0];
+          return { outcome: { outcome: "selected", optionId: allow.optionId } };
+        },
+      });
+      const session = await conn.ctx.request(methods.agent.session.new, {
+        cwd: process.cwd(),
+        mcpServers: [],
+      });
+      await conn.ctx.request(methods.agent.session.prompt, {
+        sessionId: session.sessionId,
+        prompt: [
+          {
+            type: "text",
+            text: "Read the file package.json in the current directory and tell me its \"name\" field. Use your file-reading tool.",
+          },
+        ],
+      });
+      expect(toolTitles.length).toBeGreaterThan(0);
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 60000);
 });

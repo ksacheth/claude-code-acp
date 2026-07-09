@@ -21,8 +21,8 @@ describe("transcriptReducer", () => {
     const state = submit(emptyTranscript, "say hi");
     expect(state.turnActive).toBe(true);
     expect(state.messages).toEqual([
-      { id: "u1", role: "user", text: "say hi", thought: "", streaming: false },
-      { id: "a1", role: "assistant", text: "", thought: "", streaming: true },
+      { id: "u1", role: "user", text: "say hi", thought: "", toolCalls: [], streaming: false },
+      { id: "a1", role: "assistant", text: "", thought: "", toolCalls: [], streaming: true },
     ]);
   });
 
@@ -66,5 +66,70 @@ describe("transcriptReducer", () => {
     const state = transcriptReducer(emptyTranscript, { kind: "update", update: textChunk("orphan") });
     expect(state.messages).toHaveLength(1);
     expect(state.messages[0]).toMatchObject({ role: "assistant", text: "orphan", streaming: true });
+  });
+
+  const toolCall = (over: Partial<Record<string, unknown>> = {}): SessionUpdate =>
+    ({
+      sessionUpdate: "tool_call",
+      toolCallId: "t1",
+      title: "Edit file.ts",
+      kind: "edit",
+      status: "pending",
+      rawInput: { path: "file.ts" },
+      ...over,
+    }) as SessionUpdate;
+
+  const toolUpdate = (over: Partial<Record<string, unknown>> = {}): SessionUpdate =>
+    ({ sessionUpdate: "tool_call_update", toolCallId: "t1", ...over }) as SessionUpdate;
+
+  it("adds a tool call to the open assistant message", () => {
+    let state = submit(emptyTranscript, "edit it");
+    state = transcriptReducer(state, { kind: "update", update: toolCall() });
+    const calls = state.messages[1].toolCalls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ id: "t1", title: "Edit file.ts", kind: "edit", status: "pending" });
+  });
+
+  it("merges tool_call_update fields by id without dropping unset ones", () => {
+    let state = submit(emptyTranscript, "edit it");
+    state = transcriptReducer(state, { kind: "update", update: toolCall() });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: toolUpdate({ status: "completed", rawOutput: { ok: true } }),
+    });
+    const call = state.messages[1].toolCalls[0];
+    expect(call.status).toBe("completed");
+    expect(call.rawOutput).toEqual({ ok: true });
+    // Unset fields survive the merge.
+    expect(call.title).toBe("Edit file.ts");
+    expect(call.kind).toBe("edit");
+  });
+
+  it("defaults kind and status when a tool_call omits them", () => {
+    let state = submit(emptyTranscript, "run it");
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: toolCall({ kind: undefined, status: undefined }),
+    });
+    const call = state.messages[1].toolCalls[0];
+    expect(call.kind).toBe("other");
+    expect(call.status).toBe("pending");
+  });
+
+  it("tracks multiple tool calls independently", () => {
+    let state = submit(emptyTranscript, "do two");
+    state = transcriptReducer(state, { kind: "update", update: toolCall() });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: toolCall({ toolCallId: "t2", title: "Read a.ts", kind: "read" }),
+    });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: toolUpdate({ toolCallId: "t2", status: "completed" }),
+    });
+    const calls = state.messages[1].toolCalls;
+    expect(calls.map((c) => c.id)).toEqual(["t1", "t2"]);
+    expect(calls[0].status).toBe("pending");
+    expect(calls[1].status).toBe("completed");
   });
 });
