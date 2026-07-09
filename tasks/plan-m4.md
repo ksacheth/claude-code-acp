@@ -3,6 +3,10 @@
 Source: `SPEC.md` §2 M4. Browse past sessions and resume them with a replayed
 transcript across app restarts.
 
+**Status: M4 COMPLETE.** A live test proved the acceptance: a session created +
+prompted in one process was loaded in a FRESH process with its history replayed
+(codeword recovered). History browser + resume wired; Code Health clean.
+
 ## What the engine gives us (verified)
 
 - `session/list { cwd? }` → `{ sessions: SessionInfo[] }` where SessionInfo =

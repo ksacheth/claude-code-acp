@@ -43,6 +43,15 @@ Plan: `tasks/plan.md` (approved: yes) — **M0 COMPLETE**
   per-session state by id. Live-verified: two concurrent turns on one
   connection stream isolated replies.
 
+## M4 — Resume & history (COMPLETE)
+
+- [x] M4-T1 — session/list + load with history replay; setModes + title updates
+- [x] M4-T2 — history browser modal (relative time, resume)
+- Acceptance (live): a session created + prompted in one process was loaded in a
+  FRESH process with its transcript replayed (codeword recovered).
+- Architecture: create-before-load so replayed updates route by id; a separate
+  `useSessionHistory` hook owns list/resume.
+
 ## Known debt (carry forward)
 
 - ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2 by splitting into
