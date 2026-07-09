@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-import { engineLaunch } from "./config";
 import type { LineChannel } from "./transport";
 
 /// A `LineChannel` backed by the Rust process bridge: `agent_send` for output,
@@ -36,11 +35,29 @@ export const tauriChannel: LineChannel = {
   },
 };
 
+/// Resolve the engine path: an explicit `VITE_ENGINE_PATH` build override wins,
+/// otherwise Rust resolves `CLAUDE_TAURI_ENGINE` or the dev default.
+async function resolveEnginePath(): Promise<string> {
+  const override = import.meta.env.VITE_ENGINE_PATH as string | undefined;
+  const path = override ?? (await invoke<string | null>("default_engine_path"));
+  if (!path) {
+    throw new Error(
+      "Engine not found. Set CLAUDE_TAURI_ENGINE to the built dist/index.js, " +
+        "or build the engine in the parent repo.",
+    );
+  }
+  return path;
+}
+
 /// Spawn the engine subprocess. Resolves once the OS has launched it (before
 /// the handshake).
-export function startAgent(cwd?: string): Promise<void> {
-  const { command, args } = engineLaunch();
-  return invoke("agent_start", { command, args, cwd: cwd ?? null });
+export async function startAgent(cwd?: string): Promise<void> {
+  const enginePath = await resolveEnginePath();
+  return invoke("agent_start", {
+    command: "node",
+    args: [enginePath],
+    cwd: cwd ?? null,
+  });
 }
 
 /// Stop the engine subprocess.

@@ -69,6 +69,27 @@ fn agent_stop(state: State<AgentState>) {
     }
 }
 
+/// Resolve where the engine's `dist/index.js` lives.
+///
+/// Order: the `CLAUDE_TAURI_ENGINE` env var, then the dev default (the engine
+/// built in the parent repo checkout). Returns `None` if neither resolves — the
+/// frontend then surfaces a clear "set CLAUDE_TAURI_ENGINE" error. A packaged
+/// build has no bundled engine, so the env var is required there (until the M6
+/// settings UI lets it be configured).
+#[tauri::command]
+fn default_engine_path() -> Option<String> {
+    if let Ok(path) = std::env::var("CLAUDE_TAURI_ENGINE") {
+        if !path.is_empty() {
+            return Some(path);
+        }
+    }
+    // src-tauri/ -> claude-tauri/ -> repo root; engine is <repo>/dist/index.js.
+    let dev = concat!(env!("CARGO_MANIFEST_DIR"), "/../../dist/index.js");
+    std::fs::canonicalize(dev)
+        .ok()
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
 /// Kill the agent when the app is tearing down so no `node` child is orphaned.
 fn stop_agent(app: &AppHandle) {
     if let Some(handle) = app.state::<AgentState>().0.lock().expect("agent state").take() {
@@ -81,12 +102,24 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AgentState::default())
-        .invoke_handler(tauri::generate_handler![agent_start, agent_send, agent_stop])
+        .invoke_handler(tauri::generate_handler![
+            agent_start,
+            agent_send,
+            agent_stop,
+            default_engine_path
+        ])
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {
                 stop_agent(window.app_handle());
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        // Belt-and-suspenders: also stop the agent when the app itself exits,
+        // covering quit paths that do not fire a window Destroyed event.
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                stop_agent(app);
+            }
+        });
 }

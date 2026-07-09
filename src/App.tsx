@@ -1,7 +1,6 @@
-import { useState, type FormEvent } from "react";
-
 import "./App.css";
-import { Markdown } from "./components/Markdown";
+import { Composer } from "./components/Composer";
+import { TranscriptView } from "./components/Transcript";
 import { useAgent, type ConnectionStatus } from "./useAgent";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -14,14 +13,7 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 function App() {
   const agent = useAgent();
   const { status, agentInfo, error, cwd, transcript } = agent;
-  const [draft, setDraft] = useState("");
-
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const text = draft;
-    setDraft("");
-    void agent.sendPrompt(text);
-  };
+  const offline = status === "disconnected" || status === "error";
 
   return (
     <main className="app">
@@ -37,41 +29,27 @@ function App() {
 
       {error && <pre className="error">{error}</pre>}
 
-      <section className="transcript">
-        {!cwd && status === "connected" && (
-          <div className="empty">
-            <p>Choose a project directory to start a session.</p>
-            <button onClick={() => void agent.pickDirectory()}>Choose directory…</button>
-          </div>
-        )}
-        {transcript.messages.map((m) => (
-          <div key={m.id} className={`message message-${m.role}`}>
-            <div className="role">{m.role}</div>
-            <div className="text">
-              {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
-              {m.streaming && <span className="caret" />}
-            </div>
-          </div>
-        ))}
-      </section>
+      {offline && (
+        <div className="banner">
+          <span>{status === "error" ? "Engine failed to start." : "Engine disconnected."}</span>
+          <button onClick={() => void agent.reconnect()}>Reconnect</button>
+        </div>
+      )}
+
+      <TranscriptView
+        messages={transcript.messages}
+        showPicker={!cwd && status === "connected"}
+        onPickDirectory={() => void agent.pickDirectory()}
+      />
 
       {cwd && (
-        <form className="composer" onSubmit={onSubmit}>
-          <div className="cwd" title={cwd}>
-            {cwd}
-          </div>
-          <div className="composer-row">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.currentTarget.value)}
-              placeholder="Send a message…"
-              disabled={status !== "connected"}
-            />
-            <button type="submit" disabled={!agent.canPrompt || draft.trim().length === 0}>
-              {transcript.turnActive ? "…" : "Send"}
-            </button>
-          </div>
-        </form>
+        <Composer
+          cwd={cwd}
+          disabled={status !== "connected"}
+          canSend={agent.canPrompt}
+          busy={transcript.turnActive}
+          onSend={(text) => void agent.sendPrompt(text)}
+        />
       )}
     </main>
   );

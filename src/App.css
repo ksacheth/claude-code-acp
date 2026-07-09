@@ -168,6 +168,18 @@ button:disabled {
   cursor: default;
 }
 
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin: 0.75em 1em;
+  padding: 0.6em 0.9em;
+  background: rgba(224, 168, 0, 0.15);
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+
 .error {
   margin: 0.75em 1em;
   padding: 0.6em 0.8em;

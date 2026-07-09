@@ -26,6 +26,8 @@ export interface AgentState {
   pickDirectory: () => Promise<void>;
   /// Send a prompt in the current session and stream the reply.
   sendPrompt: (text: string) => Promise<void>;
+  /// Restart the engine and reconnect (e.g. after a crash/disconnect).
+  reconnect: () => Promise<void>;
 }
 
 /// Owns the whole M0 chat lifecycle: start the engine, complete the handshake,
@@ -40,45 +42,63 @@ export function useAgent(): AgentState {
   const [transcript, dispatch] = useReducer(transcriptReducer, emptyTranscript);
 
   const ctxRef = useRef<ClientContext | null>(null);
+  const disposedRef = useRef(false);
   const startedRef = useRef(false);
   const turnSeq = useRef(0);
+
+  const connect = useCallback(async () => {
+    setError(undefined);
+    setStatus("connecting");
+    const startedAt = performance.now();
+    try {
+      await startAgent();
+      const conn = await connectAgent(tauriChannel, {
+        onSessionUpdate: (notification) => {
+          dispatch({ kind: "update", update: notification.update });
+        },
+      });
+      if (disposedRef.current) {
+        await stopAgent();
+        return;
+      }
+      ctxRef.current = conn.ctx;
+      setAgentInfo(conn.agentInfo);
+      setStatus("connected");
+      // Cold-start budget: launch -> handshake complete (first usable prompt).
+      console.info(`[claude-tauri] connected in ${Math.round(performance.now() - startedAt)}ms`);
+      conn.closed.then(() => {
+        if (!disposedRef.current) {
+          ctxRef.current = null;
+          setStatus("disconnected");
+        }
+      });
+    } catch (err) {
+      if (!disposedRef.current) {
+        setError(String(err));
+        setStatus("error");
+      }
+    }
+  }, []);
+
+  const reconnect = useCallback(async () => {
+    // Clear any prior process before starting a fresh one.
+    await stopAgent().catch(() => {});
+    setSessionId(undefined);
+    setCwd(undefined);
+    await connect();
+  }, [connect]);
 
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    let disposed = false;
-
-    (async () => {
-      try {
-        await startAgent();
-        const conn = await connectAgent(tauriChannel, {
-          onSessionUpdate: (notification) => {
-            dispatch({ kind: "update", update: notification.update });
-          },
-        });
-        if (disposed) {
-          await stopAgent();
-          return;
-        }
-        ctxRef.current = conn.ctx;
-        setAgentInfo(conn.agentInfo);
-        setStatus("connected");
-        conn.closed.then(() => {
-          if (!disposed) setStatus("disconnected");
-        });
-      } catch (err) {
-        if (!disposed) {
-          setError(String(err));
-          setStatus("error");
-        }
-      }
-    })();
+    disposedRef.current = false;
+    void connect();
 
     return () => {
-      disposed = true;
+      disposedRef.current = true;
       void stopAgent();
     };
-  }, []);
+  }, [connect]);
 
   const pickDirectory = useCallback(async () => {
     const ctx = ctxRef.current;
@@ -122,5 +142,6 @@ export function useAgent(): AgentState {
     canPrompt: status === "connected" && !!sessionId && !transcript.turnActive,
     pickDirectory,
     sendPrompt,
+    reconnect,
   };
 }
