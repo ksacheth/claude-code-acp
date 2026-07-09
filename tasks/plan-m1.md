@@ -3,6 +3,12 @@
 Source: `SPEC.md` §2 M1. The founding milestone: make visible what Claude
 Desktop hides. Built on M0's transcript/hook/transport.
 
+**Status: M1 COMPLETE.** All three tasks landed; the gated live suite
+(streaming reply, visible thinking, cancel) passes against the real engine.
+The useAgent complexity debt carried from M0 was paid off during M1-T2 by
+splitting into `useAgentConnection` + `useSessionActions`. No engine (`src/`)
+change was needed — thinking, usage, and cancel are all already supported.
+
 ## What the engine gives us (verified)
 
 - `agent_thought_chunk` — same `ContentChunk` shape as `agent_message_chunk`;
