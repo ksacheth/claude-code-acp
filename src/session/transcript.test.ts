@@ -21,8 +21,8 @@ describe("transcriptReducer", () => {
     const state = submit(emptyTranscript, "say hi");
     expect(state.turnActive).toBe(true);
     expect(state.messages).toEqual([
-      { id: "u1", role: "user", text: "say hi", streaming: false },
-      { id: "a1", role: "assistant", text: "", streaming: true },
+      { id: "u1", role: "user", text: "say hi", thought: "", streaming: false },
+      { id: "a1", role: "assistant", text: "", thought: "", streaming: true },
     ]);
   });
 
@@ -35,10 +35,14 @@ describe("transcriptReducer", () => {
     expect(assistant.streaming).toBe(true);
   });
 
-  it("ignores thought chunks in M0", () => {
+  it("accumulates thought chunks into the assistant's thought, separate from text", () => {
     let state = submit(emptyTranscript, "hi");
-    state = transcriptReducer(state, { kind: "update", update: thoughtChunk("thinking...") });
-    expect(state.messages[1].text).toBe("");
+    state = transcriptReducer(state, { kind: "update", update: thoughtChunk("Let me ") });
+    state = transcriptReducer(state, { kind: "update", update: thoughtChunk("think.") });
+    state = transcriptReducer(state, { kind: "update", update: textChunk("Answer") });
+    const assistant = state.messages[1];
+    expect(assistant.thought).toBe("Let me think.");
+    expect(assistant.text).toBe("Answer");
   });
 
   it("closes streaming and the turn on end", () => {

@@ -109,6 +109,34 @@ body {
   color: #fff;
 }
 
+.thought {
+  font-size: 0.85em;
+  border-left: 2px solid #c9a227;
+  background: rgba(201, 162, 39, 0.08);
+  border-radius: 0 6px 6px 0;
+  padding: 0.2em 0.6em;
+}
+
+.thought summary {
+  cursor: pointer;
+  color: #9a7d1e;
+  font-weight: 500;
+  user-select: none;
+}
+
+.thought-body {
+  margin-top: 0.35em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #6b6b6b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .thought-body {
+    color: #b0b0b0;
+  }
+}
+
 .caret {
   display: inline-block;
   width: 0.5em;

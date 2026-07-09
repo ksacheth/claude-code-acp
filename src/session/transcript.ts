@@ -5,7 +5,10 @@ export type Role = "user" | "assistant";
 export interface Message {
   id: string;
   role: Role;
+  /// The visible answer text (markdown for assistant messages).
   text: string;
+  /// Accumulated extended-thinking text for assistant messages ("" if none).
+  thought: string;
   /// True while the assistant message is still receiving chunks.
   streaming: boolean;
 }
@@ -26,26 +29,49 @@ export type TranscriptAction =
   /// The turn finished (prompt response received or cancelled).
   | { kind: "end" };
 
-function appendToOpenAssistant(state: TranscriptState, text: string): TranscriptState {
+function isStreamingAssistant(message: Message | undefined): message is Message {
+  return !!message && message.role === "assistant" && message.streaming;
+}
+
+/// Apply `edit` to the open (streaming) assistant message, or open a new one if
+/// none is streaming (defensive: e.g. chunks arriving after a resume).
+function editOpenAssistant(
+  state: TranscriptState,
+  edit: (message: Message) => Message,
+): TranscriptState {
   const last = state.messages[state.messages.length - 1];
-  if (last && last.role === "assistant" && last.streaming) {
-    const updated = { ...last, text: last.text + text };
-    return { ...state, messages: [...state.messages.slice(0, -1), updated] };
+  if (isStreamingAssistant(last)) {
+    return { ...state, messages: [...state.messages.slice(0, -1), edit(last)] };
   }
-  // Defensive: a chunk with no open assistant message (e.g. resumed mid-turn).
-  return {
-    ...state,
-    messages: [
-      ...state.messages,
-      { id: `assistant-${state.messages.length}`, role: "assistant", text, streaming: true },
-    ],
+  const opened: Message = {
+    id: `assistant-${state.messages.length}`,
+    role: "assistant",
+    text: "",
+    thought: "",
+    streaming: true,
   };
+  return { ...state, messages: [...state.messages, edit(opened)] };
+}
+
+/// Route a streaming update into the open assistant message. Answer text and
+/// thinking text stream the same way into different fields; everything else
+/// (tool calls, plans, usage) is handled outside the transcript.
+function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptState {
+  const isMessage = update.sessionUpdate === "agent_message_chunk";
+  const isThought = update.sessionUpdate === "agent_thought_chunk";
+  if ((isMessage || isThought) && update.content.type === "text") {
+    const chunk = update.content.text;
+    const field = isMessage ? "text" : "thought";
+    return editOpenAssistant(state, (m) => ({ ...m, [field]: m[field] + chunk }));
+  }
+  return state;
 }
 
 /// Assembles streaming session updates into a chat transcript.
 ///
-/// M0 renders assistant text only. Thought chunks, tool calls, plans, and usage
-/// are intentionally ignored here and surface in later milestones (M1/M2).
+/// M1 renders assistant answer text plus extended-thinking text. Tool calls,
+/// plans, and usage are handled outside the transcript (usage lives on the
+/// session; tool calls arrive in M2).
 export function transcriptReducer(
   state: TranscriptState,
   action: TranscriptAction,
@@ -56,18 +82,13 @@ export function transcriptReducer(
         turnActive: true,
         messages: [
           ...state.messages,
-          { id: action.userId, role: "user", text: action.text, streaming: false },
-          { id: action.assistantId, role: "assistant", text: "", streaming: true },
+          { id: action.userId, role: "user", text: action.text, thought: "", streaming: false },
+          { id: action.assistantId, role: "assistant", text: "", thought: "", streaming: true },
         ],
       };
 
-    case "update": {
-      const update = action.update;
-      if (update.sessionUpdate === "agent_message_chunk" && update.content.type === "text") {
-        return appendToOpenAssistant(state, update.content.text);
-      }
-      return state;
-    }
+    case "update":
+      return applyChunk(state, action.update);
 
     case "end":
       return {

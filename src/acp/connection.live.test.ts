@@ -65,4 +65,40 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 60000);
+
+  it("streams visible thinking text on a reasoning prompt", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    let thought = "";
+    try {
+      const conn = await connectAgent(childChannel(child), {
+        onSessionUpdate: (n) => {
+          if (n.update.sessionUpdate === "agent_thought_chunk" && n.update.content.type === "text") {
+            thought += n.update.content.text;
+          }
+        },
+      });
+      const session = await conn.ctx.request(methods.agent.session.new, {
+        cwd: process.cwd(),
+        mcpServers: [],
+      });
+      await conn.ctx.request(methods.agent.session.prompt, {
+        sessionId: session.sessionId,
+        prompt: [
+          {
+            type: "text",
+            text: "Reason step by step: a farmer has 17 sheep, all but 9 die, he buys 4 more, then sells a third of the flock. Show your reasoning, then give the final count.",
+          },
+        ],
+      });
+      // The engine defaults to adaptive + summarized thinking, so a genuine
+      // reasoning prompt should stream non-empty thought text.
+      expect(thought.trim().length).toBeGreaterThan(0);
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 60000);
 });

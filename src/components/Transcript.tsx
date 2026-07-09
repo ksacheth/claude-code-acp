@@ -19,14 +19,39 @@ export function TranscriptView({ messages, showPicker, onPickDirectory }: Transc
         </div>
       )}
       {messages.map((m) => (
-        <div key={m.id} className={`message message-${m.role}`}>
-          <div className="role">{m.role}</div>
-          <div className="text">
-            {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
-            {m.streaming && <span className="caret" />}
-          </div>
-        </div>
+        <MessageView key={m.id} message={m} />
       ))}
     </section>
+  );
+}
+
+function MessageView({ message: m }: { message: Message }) {
+  const isAssistant = m.role === "assistant";
+  // Show the text row for any user message, and for an assistant message that
+  // has text or is still streaming (so a warming-up turn shows a caret).
+  const showText = !isAssistant || m.text.length > 0 || m.streaming;
+
+  return (
+    <div className={`message message-${m.role}`}>
+      <div className="role">{m.role}</div>
+      {m.thought && <ThoughtBlock thought={m.thought} streaming={m.streaming} />}
+      {showText && (
+        <div className="text">
+          {isAssistant ? <Markdown text={m.text} /> : m.text}
+          {isAssistant && m.streaming && <span className="caret" />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/// Extended-thinking text, shown in a collapsible block that is expanded by
+/// default (the whole point of the app: this is hidden in Claude Desktop).
+function ThoughtBlock({ thought, streaming }: { thought: string; streaming: boolean }) {
+  return (
+    <details className="thought" open>
+      <summary>Thinking{streaming ? "…" : ""}</summary>
+      <div className="thought-body">{thought}</div>
+    </details>
   );
 }
