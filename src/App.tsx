@@ -1,6 +1,10 @@
+import { useState } from "react";
+import type { SessionInfo } from "@agentclientprotocol/sdk";
+
 import "./App.css";
 import { DisconnectBanner } from "./components/DisconnectBanner";
 import { Header } from "./components/Header";
+import { HistoryBrowser } from "./components/HistoryBrowser";
 import { PermissionModal } from "./components/PermissionModal";
 import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
@@ -11,6 +15,14 @@ function App() {
   const { status, agentInfo, error, active } = agent;
   const connected = status === "connected";
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyList, setHistoryList] = useState<SessionInfo[] | null>(null);
+  const openHistory = () => {
+    setHistoryList(null);
+    setHistoryOpen(true);
+    void agent.listSessions().then(setHistoryList);
+  };
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -18,6 +30,7 @@ function App() {
         activeId={agent.activeId}
         onSelect={agent.switchSession}
         onNew={() => void agent.newSession()}
+        onHistory={openHistory}
         disabled={!connected}
       />
 
@@ -46,6 +59,18 @@ function App() {
 
       {agent.permission && (
         <PermissionModal request={agent.permission} onResolve={agent.resolvePermission} />
+      )}
+
+      {historyOpen && (
+        <HistoryBrowser
+          sessions={historyList}
+          nowMs={Date.now()}
+          onResume={(info) => {
+            void agent.resumeSession(info);
+            setHistoryOpen(false);
+          }}
+          onClose={() => setHistoryOpen(false)}
+        />
       )}
     </div>
   );

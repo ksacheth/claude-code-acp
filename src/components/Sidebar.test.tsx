@@ -20,7 +20,7 @@ const sessions = [
 describe("Sidebar", () => {
   it("lists each session's title and directory", () => {
     const html = renderToStaticMarkup(
-      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} disabled={false} />,
+      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} onHistory={() => {}} disabled={false} />,
     );
     expect(html).toContain("alpha");
     expect(html).toContain("beta");
@@ -30,7 +30,7 @@ describe("Sidebar", () => {
 
   it("highlights the active session", () => {
     const html = renderToStaticMarkup(
-      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} disabled={false} />,
+      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} onHistory={() => {}} disabled={false} />,
     );
     // The active item carries the "active" class.
     expect(html).toMatch(/session-item active[^"]*"[^>]*>[^<]*<div class="session-title">\s*alpha/);
@@ -38,7 +38,7 @@ describe("Sidebar", () => {
 
   it("shows a spinner on a session with an active turn", () => {
     const html = renderToStaticMarkup(
-      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} disabled={false} />,
+      <Sidebar sessions={sessions} activeId="A" onSelect={() => {}} onNew={() => {}} onHistory={() => {}} disabled={false} />,
     );
     expect(html).toContain("session-spinner");
   });
