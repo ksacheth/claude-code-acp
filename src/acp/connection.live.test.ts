@@ -169,4 +169,46 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 60000);
+
+  it("runs two concurrent sessions with updates isolated by sessionId", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    const textBySession: Record<string, string> = {};
+    try {
+      const conn = await connectAgent(childChannel(child), {
+        onSessionUpdate: (n) => {
+          if (n.update.sessionUpdate === "agent_message_chunk" && n.update.content.type === "text") {
+            textBySession[n.sessionId] = (textBySession[n.sessionId] ?? "") + n.update.content.text;
+          }
+        },
+      });
+
+      const a = await conn.ctx.request(methods.agent.session.new, { cwd: process.cwd(), mcpServers: [] });
+      const b = await conn.ctx.request(methods.agent.session.new, { cwd: process.cwd(), mcpServers: [] });
+      expect(a.sessionId).not.toBe(b.sessionId);
+
+      // Fire both turns concurrently on the single connection.
+      await Promise.all([
+        conn.ctx.request(methods.agent.session.prompt, {
+          sessionId: a.sessionId,
+          prompt: [{ type: "text", text: "Reply with exactly the word: apple" }],
+        }),
+        conn.ctx.request(methods.agent.session.prompt, {
+          sessionId: b.sessionId,
+          prompt: [{ type: "text", text: "Reply with exactly the word: banana" }],
+        }),
+      ]);
+
+      expect(textBySession[a.sessionId]?.toLowerCase()).toContain("apple");
+      expect(textBySession[b.sessionId]?.toLowerCase()).toContain("banana");
+      // Isolation: neither session's reply leaked into the other.
+      expect(textBySession[a.sessionId]?.toLowerCase()).not.toContain("banana");
+      expect(textBySession[b.sessionId]?.toLowerCase()).not.toContain("apple");
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 90000);
 });

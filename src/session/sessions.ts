@@ -32,6 +32,7 @@ export type SessionsAction =
   | { kind: "create"; id: string; cwd: string; modes?: SessionModeState }
   | { kind: "activate"; id: string }
   | { kind: "remove"; id: string }
+  | { kind: "clear" }
   | { kind: "submit"; sessionId: string; userId: string; assistantId: string; text: string }
   | { kind: "end"; sessionId: string }
   | { kind: "update"; sessionId: string; update: SessionUpdate };
@@ -104,6 +105,8 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
     }
     case "activate":
       return { ...state, activeId: action.id };
+    case "clear":
+      return emptySessions;
     case "remove":
       return {
         sessions: state.sessions.filter((s) => s.id !== action.id),

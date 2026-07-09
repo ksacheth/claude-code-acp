@@ -2,23 +2,10 @@ import { Markdown } from "./Markdown";
 import { ToolCall } from "./ToolCall";
 import type { Message } from "../session/transcript";
 
-interface TranscriptViewProps {
-  messages: Message[];
-  showPicker: boolean;
-  onPickDirectory: () => void;
-}
-
-/// The scrolling message list, with the initial directory-picker prompt shown
-/// until a session exists.
-export function TranscriptView({ messages, showPicker, onPickDirectory }: TranscriptViewProps) {
+/// The scrolling message list for the active session.
+export function TranscriptView({ messages }: { messages: Message[] }) {
   return (
     <section className="transcript">
-      {showPicker && (
-        <div className="empty">
-          <p>Choose a project directory to start a session.</p>
-          <button onClick={onPickDirectory}>Choose directory…</button>
-        </div>
-      )}
       {messages.map((m) => (
         <MessageView key={m.id} message={m} />
       ))}
