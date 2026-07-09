@@ -101,4 +101,36 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 60000);
+
+  it("cancels an in-flight turn (stopReason cancelled)", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    try {
+      let session = "";
+      const conn = await connectAgent(childChannel(child), {
+        onSessionUpdate: (n) => {
+          // Cancel as soon as the reply starts streaming.
+          if (n.update.sessionUpdate === "agent_message_chunk" && session) {
+            void conn.ctx.notify(methods.agent.session.cancel, { sessionId: session });
+          }
+        },
+      });
+      const created = await conn.ctx.request(methods.agent.session.new, {
+        cwd: process.cwd(),
+        mcpServers: [],
+      });
+      session = created.sessionId;
+
+      const result = await conn.ctx.request(methods.agent.session.prompt, {
+        sessionId: session,
+        prompt: [{ type: "text", text: "Count slowly from 1 to 300, one number per line." }],
+      });
+      expect(result.stopReason).toBe("cancelled");
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 60000);
 });

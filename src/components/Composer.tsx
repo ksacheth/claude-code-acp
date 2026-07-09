@@ -6,10 +6,12 @@ interface ComposerProps {
   canSend: boolean;
   busy: boolean;
   onSend: (text: string) => void;
+  onCancel: () => void;
 }
 
-/// The prompt input row, showing the session's working directory.
-export function Composer({ cwd, disabled, canSend, busy, onSend }: ComposerProps) {
+/// The prompt input row, showing the session's working directory. While a turn
+/// is streaming, the Send button becomes a Cancel button.
+export function Composer({ cwd, disabled, canSend, busy, onSend, onCancel }: ComposerProps) {
   const [draft, setDraft] = useState("");
 
   const submit = (e: FormEvent) => {
@@ -31,9 +33,15 @@ export function Composer({ cwd, disabled, canSend, busy, onSend }: ComposerProps
           placeholder="Send a message…"
           disabled={disabled}
         />
-        <button type="submit" disabled={!canSend || draft.trim().length === 0}>
-          {busy ? "…" : "Send"}
-        </button>
+        {busy ? (
+          <button type="button" className="cancel" onClick={onCancel}>
+            Cancel
+          </button>
+        ) : (
+          <button type="submit" disabled={!canSend || draft.trim().length === 0}>
+            Send
+          </button>
+        )}
       </div>
     </form>
   );

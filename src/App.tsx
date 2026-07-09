@@ -49,6 +49,7 @@ function App() {
           canSend={agent.canPrompt}
           busy={transcript.turnActive}
           onSend={(text) => void agent.sendPrompt(text)}
+          onCancel={() => void agent.cancel()}
         />
       )}
     </main>

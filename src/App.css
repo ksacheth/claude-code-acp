@@ -196,6 +196,10 @@ button:disabled {
   cursor: default;
 }
 
+button.cancel {
+  background: #dc3545;
+}
+
 .banner {
   display: flex;
   align-items: center;
