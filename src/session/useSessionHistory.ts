@@ -12,7 +12,7 @@ export interface SessionHistory {
 }
 
 /// Create the store session, load it (its history replays into the transcript,
-/// routed by id), attach modes, and activate it.
+/// routed by id), attach config options, and activate it.
 async function resumeInto(
   ctx: ClientContext,
   info: SessionInfo,
@@ -24,7 +24,9 @@ async function resumeInto(
     cwd: info.cwd,
     mcpServers: [],
   });
-  if (response.modes) dispatch({ kind: "setModes", sessionId: info.sessionId, modes: response.modes });
+  if (response.configOptions) {
+    dispatch({ kind: "setConfig", sessionId: info.sessionId, configOptions: response.configOptions });
+  }
   dispatch({ kind: "activate", id: info.sessionId });
 }
 

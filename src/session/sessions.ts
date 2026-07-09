@@ -1,5 +1,11 @@
-import type { PlanEntry, SessionModeState, SessionUpdate } from "@agentclientprotocol/sdk";
+import type {
+  AvailableCommand,
+  PlanEntry,
+  SessionConfigOption,
+  SessionUpdate,
+} from "@agentclientprotocol/sdk";
 
+import { patchCurrentValue, MODE_CONFIG_ID } from "./config";
 import {
   emptyTranscript,
   transcriptReducer,
@@ -15,7 +21,10 @@ export interface SessionState {
   title: string;
   transcript: TranscriptState;
   usage?: Usage;
-  modes?: SessionModeState;
+  /// Unified session config (mode/model/effort/agent/fast) from the engine.
+  configOptions?: SessionConfigOption[];
+  /// Agent slash commands (from available_commands_update).
+  commands?: AvailableCommand[];
   plan?: PlanEntry[];
 }
 
@@ -29,11 +38,14 @@ export interface SessionsState {
 export const emptySessions: SessionsState = { sessions: [] };
 
 export type SessionsAction =
-  | { kind: "create"; id: string; cwd: string; modes?: SessionModeState }
+  | { kind: "create"; id: string; cwd: string; configOptions?: SessionConfigOption[] }
   | { kind: "activate"; id: string }
   | { kind: "remove"; id: string }
   | { kind: "clear" }
-  | { kind: "setModes"; sessionId: string; modes: SessionModeState }
+  /// Authoritative replace (session/new, load, or set_config_option response).
+  | { kind: "setConfig"; sessionId: string; configOptions: SessionConfigOption[] }
+  /// Optimistic single-value patch before the set_config_option response lands.
+  | { kind: "patchConfig"; sessionId: string; configId: string; value: string }
   | { kind: "submit"; sessionId: string; userId: string; assistantId: string; text: string }
   | { kind: "end"; sessionId: string }
   | { kind: "update"; sessionId: string; update: SessionUpdate };
@@ -50,10 +62,14 @@ function applyUpdate(session: SessionState, update: SessionUpdate): SessionState
   switch (update.sessionUpdate) {
     case "usage_update":
       return { ...session, usage: { used: update.used, size: update.size, cost: update.cost } };
+    case "config_option_update":
+      return { ...session, configOptions: update.configOptions ?? session.configOptions };
     case "current_mode_update":
-      return session.modes
-        ? { ...session, modes: { ...session.modes, currentModeId: update.currentModeId } }
-        : session;
+      // The engine still announces mode changes here (e.g. auto plan mode); keep
+      // the mode config option's currentValue in sync.
+      return { ...session, configOptions: patchCurrentValue(session.configOptions, MODE_CONFIG_ID, update.currentModeId) };
+    case "available_commands_update":
+      return { ...session, commands: update.availableCommands };
     case "plan":
       return { ...session, plan: update.entries };
     case "session_info_update":
@@ -87,7 +103,12 @@ function applyToSession(session: SessionState, action: SessionsAction): SessionS
 
 /// Add a new session (made active). Idempotent: re-creating an already-open
 /// session just activates it (never blanks its transcript — matters on resume).
-function createSession(state: SessionsState, id: string, cwd: string, modes?: SessionModeState): SessionsState {
+function createSession(
+  state: SessionsState,
+  id: string,
+  cwd: string,
+  configOptions?: SessionConfigOption[],
+): SessionsState {
   if (state.sessions.some((s) => s.id === id)) {
     return { ...state, activeId: id };
   }
@@ -96,9 +117,18 @@ function createSession(state: SessionsState, id: string, cwd: string, modes?: Se
     cwd,
     title: titleFromCwd(cwd),
     transcript: emptyTranscript,
-    modes,
+    configOptions,
   };
   return { sessions: [...state.sessions, session], activeId: id };
+}
+
+/// Apply `edit` to the session with `id`, leaving the rest (and activeId) as-is.
+function mapSession(
+  state: SessionsState,
+  id: string,
+  edit: (session: SessionState) => SessionState,
+): SessionsState {
+  return { ...state, sessions: state.sessions.map((s) => (s.id === id ? edit(s) : s)) };
 }
 
 /// Pick the next active session after `removedId` leaves (the last remaining).
@@ -113,30 +143,25 @@ function nextActive(sessions: SessionState[], removedId: string, activeId?: stri
 export function sessionsReducer(state: SessionsState, action: SessionsAction): SessionsState {
   switch (action.kind) {
     case "create":
-      return createSession(state, action.id, action.cwd, action.modes);
+      return createSession(state, action.id, action.cwd, action.configOptions);
     case "activate":
       return { ...state, activeId: action.id };
     case "clear":
       return emptySessions;
-    case "setModes":
-      return {
-        ...state,
-        sessions: state.sessions.map((s) =>
-          s.id === action.sessionId ? { ...s, modes: action.modes } : s,
-        ),
-      };
+    case "setConfig":
+      return mapSession(state, action.sessionId, (s) => ({ ...s, configOptions: action.configOptions }));
+    case "patchConfig":
+      return mapSession(state, action.sessionId, (s) => ({
+        ...s,
+        configOptions: patchCurrentValue(s.configOptions, action.configId, action.value),
+      }));
     case "remove":
       return {
         sessions: state.sessions.filter((s) => s.id !== action.id),
         activeId: nextActive(state.sessions, action.id, state.activeId),
       };
     default:
-      return {
-        ...state,
-        sessions: state.sessions.map((s) =>
-          s.id === action.sessionId ? applyToSession(s, action) : s,
-        ),
-      };
+      return mapSession(state, action.sessionId, (s) => applyToSession(s, action));
   }
 }
 

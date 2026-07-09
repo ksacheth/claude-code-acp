@@ -5,10 +5,19 @@ import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 
-import { methods, type SessionUpdate } from "@agentclientprotocol/sdk";
+import { methods, type NewSessionResponse, type SessionUpdate } from "@agentclientprotocol/sdk";
 
 import { connectAgent } from "./connection";
 import type { LineChannel } from "./transport";
+
+/// A model value to switch TO for the round-trip test: the first model option
+/// that isn't already selected, or null if the deployment offers only one.
+function alternateModelValue(configOptions: NewSessionResponse["configOptions"]): string | null {
+  const model = configOptions?.find((o) => o.id === "model");
+  if (model?.type !== "select") throw new Error("model config option missing or not a select");
+  const values = model.options.flatMap((o) => ("options" in o ? o.options : [o]));
+  return values.find((v) => v.value !== model.currentValue)?.value ?? null;
+}
 
 /// Text of a message chunk (agent or user), or null for other updates.
 function messageChunkText(update: SessionUpdate): string | null {
@@ -219,6 +228,36 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
       child.kill();
     }
   }, 90000);
+
+  it("round-trips a model change through set_config_option", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    try {
+      const conn = await connectAgent(childChannel(child));
+      const session = await conn.ctx.request(methods.agent.session.new, {
+        cwd: process.cwd(),
+        mcpServers: [],
+      });
+
+      // The engine unifies mode/model/effort into configOptions on session/new.
+      // Pick a value to switch to; skip if the deployment offers a single model.
+      const target = alternateModelValue(session.configOptions);
+      if (!target) return;
+
+      const response = await conn.ctx.request(methods.agent.session.setConfigOption, {
+        sessionId: session.sessionId,
+        configId: "model",
+        value: target,
+      });
+      const updated = response.configOptions.find((o) => o.id === "model");
+      expect(updated?.type === "select" && updated.currentValue).toBe(target);
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 60000);
 
   it("resumes a persisted session and replays its history in a fresh process", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "resume-"));

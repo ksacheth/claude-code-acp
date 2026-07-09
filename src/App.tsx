@@ -39,8 +39,8 @@ function App() {
           status={status}
           agentInfo={agentInfo}
           usage={active?.usage}
-          modes={active?.modes}
-          onSetMode={(modeId) => void agent.setMode(modeId)}
+          configOptions={active?.configOptions}
+          onSetConfig={(configId, value) => void agent.setConfig(configId, value)}
         />
 
         {error && <pre className="error">{error}</pre>}

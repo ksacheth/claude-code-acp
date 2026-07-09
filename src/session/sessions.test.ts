@@ -14,6 +14,24 @@ const textChunk = (text: string): SessionUpdate => ({
   content: { type: "text", text },
 });
 
+/// A single select-style config option array for the config-routing tests.
+const selectConfig = (id: string, currentValue: string, values: string[]) =>
+  [
+    {
+      id,
+      name: id,
+      type: "select",
+      currentValue,
+      options: values.map((v) => ({ value: v, name: v })),
+    },
+  ] as never;
+
+/// The `currentValue` of the first config option after `state` settles.
+const firstConfigValue = (state: SessionsState): unknown => {
+  const option = activeSession(state)?.configOptions?.[0];
+  return option && "currentValue" in option ? option.currentValue : undefined;
+};
+
 function withTwoSessions(): SessionsState {
   let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
   state = sessionsReducer(state, { kind: "create", id: "B", cwd: "/repo/beta" });
@@ -107,11 +125,44 @@ describe("sessionsReducer", () => {
     expect(activeSession(state)?.title).toBe("Fix the parser");
   });
 
-  it("attaches modes on setModes", () => {
+  it("replaces config options on setConfig (authoritative)", () => {
     let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
-    const modes = { currentModeId: "plan", availableModes: [{ id: "plan", name: "Plan" }] };
-    state = sessionsReducer(state, { kind: "setModes", sessionId: "A", modes });
-    expect(activeSession(state)?.modes).toEqual(modes);
+    const configOptions = [
+      { id: "model", name: "Model", type: "select", currentValue: "opus", options: [{ value: "opus", name: "Opus" }] },
+    ] as never;
+    state = sessionsReducer(state, { kind: "setConfig", sessionId: "A", configOptions });
+    expect(activeSession(state)?.configOptions).toBe(configOptions);
+  });
+
+  it("optimistically patches one config value on patchConfig", () => {
+    const configOptions = selectConfig("model", "opus", ["opus", "sonnet"]);
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha", configOptions });
+    state = sessionsReducer(state, { kind: "patchConfig", sessionId: "A", configId: "model", value: "sonnet" });
+    expect(firstConfigValue(state)).toBe("sonnet");
+  });
+
+  it("keeps the mode config value in sync from current_mode_update", () => {
+    const configOptions = selectConfig("mode", "default", ["default", "plan"]);
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha", configOptions });
+    state = sessionsReducer(state, {
+      kind: "update",
+      sessionId: "A",
+      update: { sessionUpdate: "current_mode_update", currentModeId: "plan" } as SessionUpdate,
+    });
+    expect(firstConfigValue(state)).toBe("plan");
+  });
+
+  it("routes available_commands_update to the session's commands", () => {
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    state = sessionsReducer(state, {
+      kind: "update",
+      sessionId: "A",
+      update: {
+        sessionUpdate: "available_commands_update",
+        availableCommands: [{ name: "compact", description: "Compact the context" }],
+      } as SessionUpdate,
+    });
+    expect(activeSession(state)?.commands?.[0].name).toBe("compact");
   });
 
   it("create is idempotent — re-creating an open session preserves its transcript", () => {

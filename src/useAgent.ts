@@ -5,7 +5,6 @@ import type {
   RequestPermissionRequest,
   RequestPermissionResponse,
   SessionInfo,
-  SessionModeId,
   SessionNotification,
 } from "@agentclientprotocol/sdk";
 
@@ -43,7 +42,7 @@ export interface AgentState {
   switchSession: (id: string) => void;
   sendPrompt: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
-  setMode: (modeId: SessionModeId) => Promise<void>;
+  setConfig: (configId: string, value: string) => Promise<void>;
   listSessions: () => Promise<SessionInfo[]>;
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
@@ -98,7 +97,7 @@ export function useAgent(): AgentState {
     switchSession: actions.switchSession,
     sendPrompt: actions.sendPrompt,
     cancel: actions.cancel,
-    setMode: actions.setMode,
+    setConfig: actions.setConfig,
     listSessions: history.listSessions,
     resumeSession: history.resumeSession,
     resolvePermission,

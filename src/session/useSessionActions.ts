@@ -1,6 +1,6 @@
 import { useCallback, useRef, type Dispatch, type MutableRefObject } from "react";
 
-import { methods, type ClientContext, type SessionModeId } from "@agentclientprotocol/sdk";
+import { methods, type ClientContext } from "@agentclientprotocol/sdk";
 import { open } from "@tauri-apps/plugin-dialog";
 
 import type { SessionsAction } from "./sessions";
@@ -14,8 +14,9 @@ export interface SessionActions {
   sendPrompt: (text: string) => Promise<void>;
   /// Cancel the active session's in-flight turn; partial output is kept.
   cancel: () => Promise<void>;
-  /// Switch the active session's mode (session/set_mode), optimistically.
-  setMode: (modeId: SessionModeId) => Promise<void>;
+  /// Set one of the active session's config options (mode/model/effort/agent),
+  /// optimistically; the engine's response replaces the whole set.
+  setConfig: (configId: string, value: string) => Promise<void>;
 }
 
 interface TurnDeps {
@@ -69,7 +70,12 @@ export function useSessionActions(
       cwd: selected,
       mcpServers: [],
     });
-    dispatch({ kind: "create", id: response.sessionId, cwd: selected, modes: response.modes ?? undefined });
+    dispatch({
+      kind: "create",
+      id: response.sessionId,
+      cwd: selected,
+      configOptions: response.configOptions ?? undefined,
+    });
   }, [ctxRef, dispatch]);
 
   const switchSession = useCallback((id: string) => dispatch({ kind: "activate", id }), [dispatch]);
@@ -89,20 +95,23 @@ export function useSessionActions(
     [withActive],
   );
 
-  const setMode = useCallback(
-    async (modeId: SessionModeId) => {
-      await withActive((ctx, id) => {
-        // Optimistic: reflect immediately; current_mode_update confirms.
-        dispatch({
-          kind: "update",
+  const setConfig = useCallback(
+    async (configId: string, value: string) => {
+      await withActive(async (ctx, id) => {
+        // Optimistic: reflect the new value immediately.
+        dispatch({ kind: "patchConfig", sessionId: id, configId, value });
+        // The response carries the full, reconciled set (e.g. the effort list
+        // changes when the model changes), so it's the authoritative replace.
+        const response = await ctx.request(methods.agent.session.setConfigOption, {
           sessionId: id,
-          update: { sessionUpdate: "current_mode_update", currentModeId: modeId },
+          configId,
+          value,
         });
-        return ctx.request(methods.agent.session.setMode, { sessionId: id, modeId });
+        dispatch({ kind: "setConfig", sessionId: id, configOptions: response.configOptions });
       });
     },
     [withActive, dispatch],
   );
 
-  return { newSession, switchSession, sendPrompt, cancel, setMode };
+  return { newSession, switchSession, sendPrompt, cancel, setConfig };
 }

@@ -1,5 +1,6 @@
-import type { SessionModeId, SessionModeState } from "@agentclientprotocol/sdk";
+import type { SessionConfigOption } from "@agentclientprotocol/sdk";
 
+import { selectConfigs } from "../session/config";
 import { formatContext, formatCost, type Usage } from "../session/usage";
 import type { ConnectionStatus } from "../useAgent";
 
@@ -14,31 +15,35 @@ interface HeaderProps {
   status: ConnectionStatus;
   agentInfo?: { name: string; version: string } | null;
   usage?: Usage;
-  modes?: SessionModeState;
-  onSetMode: (modeId: SessionModeId) => void;
+  configOptions?: SessionConfigOption[];
+  onSetConfig: (configId: string, value: string) => void;
 }
 
-/// The top bar: app title, mode selector, live context/cost usage, and status.
-export function Header({ status, agentInfo, usage, modes, onSetMode }: HeaderProps) {
+/// The top bar: app title, session config selectors (mode/model/effort/agent),
+/// live context/cost usage, and connection status.
+export function Header({ status, agentInfo, usage, configOptions, onSetConfig }: HeaderProps) {
   const cost = usage && formatCost(usage.cost);
   const agentLabel = agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined;
   return (
     <header className="app-header">
       <div className="title">Claude Tauri</div>
       <div className="header-right">
-        {modes && modes.availableModes.length > 1 && (
+        {selectConfigs(configOptions).map((config) => (
           <select
-            className="mode-select"
-            value={modes.currentModeId}
-            onChange={(e) => onSetMode(e.currentTarget.value)}
+            key={config.id}
+            className={`config-select config-${config.id}`}
+            title={config.name}
+            aria-label={config.name}
+            value={config.currentValue}
+            onChange={(e) => onSetConfig(config.id, e.currentTarget.value)}
           >
-            {modes.availableModes.map((mode) => (
-              <option key={mode.id} value={mode.id}>
-                {mode.name}
+            {config.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.name}
               </option>
             ))}
           </select>
-        )}
+        ))}
         {usage && (
           <div className="usage" title="Context tokens used / window (·cost)">
             {formatContext(usage)}

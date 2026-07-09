@@ -188,7 +188,7 @@ body {
   gap: 1em;
 }
 
-.mode-select {
+.config-select {
   font: inherit;
   font-size: 0.8em;
   padding: 0.15em 0.4em;
@@ -196,6 +196,7 @@ body {
   border-radius: 6px;
   background: transparent;
   color: inherit;
+  max-width: 12em;
 }
 
 .usage {
