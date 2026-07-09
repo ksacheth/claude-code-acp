@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { SessionUpdate } from "@agentclientprotocol/sdk";
 
+import { messageText } from "./transcript";
+
 import {
   activeSession,
   emptySessions,
@@ -71,7 +73,7 @@ describe("sessionsReducer", () => {
     const a = state.sessions.find((s) => s.id === "A")!;
     const b = state.sessions.find((s) => s.id === "B")!;
     const lastB = b.transcript.messages[b.transcript.messages.length - 1];
-    expect(lastB?.text).toBe("hello");
+    expect(lastB && messageText(lastB)).toBe("hello");
     expect(a.transcript.messages).toHaveLength(0);
   });
 

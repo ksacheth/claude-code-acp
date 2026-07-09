@@ -1,6 +1,6 @@
 import { Markdown } from "./Markdown";
 import { ToolCall } from "./ToolCall";
-import type { Message } from "../session/transcript";
+import type { Message, MessagePart } from "../session/transcript";
 
 /// The scrolling message list for the active session.
 export function TranscriptView({ messages }: { messages: Message[] }) {
@@ -15,29 +15,59 @@ export function TranscriptView({ messages }: { messages: Message[] }) {
 
 function MessageView({ message: m }: { message: Message }) {
   const isAssistant = m.role === "assistant";
-  // Show the text row for any user message, and for an assistant message that
-  // has text or is still streaming (so a warming-up turn shows a caret).
-  const showText = !isAssistant || m.text.length > 0 || m.streaming;
-
+  const lastIndex = m.parts.length - 1;
   return (
     <div className={`message message-${m.role}`}>
       <div className="role">{m.role}</div>
-      {m.thought && <ThoughtBlock thought={m.thought} streaming={m.streaming} />}
-      {m.toolCalls.length > 0 && (
-        <div className="toolcalls">
-          {m.toolCalls.map((call) => (
-            <ToolCall key={call.id} call={call} />
-          ))}
-        </div>
-      )}
-      {showText && (
+      {m.parts.map((part, i) => (
+        <PartView
+          key={i}
+          part={part}
+          assistant={isAssistant}
+          streaming={m.streaming}
+          last={i === lastIndex}
+        />
+      ))}
+      {/* A streaming assistant that hasn't emitted any part yet still shows a
+          caret so a warming-up turn reads as active. */}
+      {isAssistant && m.streaming && m.parts.length === 0 && (
         <div className="text">
-          {isAssistant ? <Markdown text={m.text} /> : m.text}
-          {isAssistant && m.streaming && <span className="caret" />}
+          <span className="caret" />
         </div>
       )}
     </div>
   );
+}
+
+interface PartViewProps {
+  part: MessagePart;
+  assistant: boolean;
+  streaming: boolean;
+  /// True for the message's final part — carries the live caret / "…".
+  last: boolean;
+}
+
+/// Render one ordered content part in place: a thinking block, a tool call, or
+/// answer/user text. The active caret and the thinking "…" only attach to the
+/// last part of a streaming message.
+function PartView({ part, assistant, streaming, last }: PartViewProps) {
+  switch (part.type) {
+    case "thought":
+      return <ThoughtBlock thought={part.text} streaming={streaming && last} />;
+    case "tool":
+      return (
+        <div className="toolcalls">
+          <ToolCall call={part.call} />
+        </div>
+      );
+    case "text":
+      return (
+        <div className="text">
+          {assistant ? <Markdown text={part.text} /> : part.text}
+          {assistant && streaming && last && <span className="caret" />}
+        </div>
+      );
+  }
 }
 
 /// Extended-thinking text, shown in a collapsible block that is expanded by

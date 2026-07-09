@@ -18,15 +18,21 @@ export interface ToolCallView {
   content: ToolCallContent[];
 }
 
+/// One ordered segment of an assistant turn. Thinking, answer text, and tool
+/// calls interleave in arrival order, so the transcript renders them the way
+/// the agent produced them (think → tool → think → answer) instead of grouping
+/// all thinking above everything.
+export type MessagePart =
+  | { type: "text"; text: string }
+  | { type: "thought"; text: string }
+  | { type: "tool"; call: ToolCallView };
+
 export interface Message {
   id: string;
   role: Role;
-  /// The visible answer text (markdown for assistant messages).
-  text: string;
-  /// Accumulated extended-thinking text for assistant messages ("" if none).
-  thought: string;
-  /// Tool calls made during this assistant turn (merged by id).
-  toolCalls: ToolCallView[];
+  /// Ordered content segments (see MessagePart). A user message is a single
+  /// text part; an assistant message interleaves thought/text/tool parts.
+  parts: MessagePart[];
   /// True while the assistant message is still receiving chunks.
   streaming: boolean;
 }
@@ -47,6 +53,21 @@ export type TranscriptAction =
   /// The turn finished (prompt response received or cancelled).
   | { kind: "end" };
 
+/// Concatenated answer text of a message (all text parts, in order).
+export function messageText(message: Message): string {
+  return message.parts.flatMap((p) => (p.type === "text" ? [p.text] : [])).join("");
+}
+
+/// Concatenated thinking text of a message (all thought parts, in order).
+export function messageThought(message: Message): string {
+  return message.parts.flatMap((p) => (p.type === "thought" ? [p.text] : [])).join("");
+}
+
+/// The message's tool calls, in the order they were made.
+export function toolCalls(message: Message): ToolCallView[] {
+  return message.parts.flatMap((p) => (p.type === "tool" ? [p.call] : []));
+}
+
 function isStreamingAssistant(message: Message | undefined): message is Message {
   return !!message && message.role === "assistant" && message.streaming;
 }
@@ -64,23 +85,33 @@ function editOpenAssistant(
   const opened: Message = {
     id: `assistant-${state.messages.length}`,
     role: "assistant",
-    text: "",
-    thought: "",
-    toolCalls: [],
+    parts: [],
     streaming: true,
   };
   return { ...state, messages: [...state.messages, edit(opened)] };
 }
 
-/// Route a text/thought chunk into the open assistant message. Answer text and
-/// thinking text stream the same way into different fields.
+/// Append a text/thought chunk to `parts`: extend the last part when it is the
+/// same kind (a continuing run), else start a new part. This is what keeps
+/// consecutive thinking one block while a following tool call or answer starts
+/// a fresh segment.
+function appendChunk(parts: MessagePart[], kind: "text" | "thought", chunk: string): MessagePart[] {
+  const last = parts[parts.length - 1];
+  if (last && last.type === kind) {
+    return [...parts.slice(0, -1), { ...last, text: last.text + chunk }];
+  }
+  return [...parts, kind === "text" ? { type: "text", text: chunk } : { type: "thought", text: chunk }];
+}
+
+/// Route a text/thought chunk into the open assistant message as an ordered
+/// part. Answer text and thinking stream the same way into different part kinds.
 function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptState {
   const isMessage = update.sessionUpdate === "agent_message_chunk";
   const isThought = update.sessionUpdate === "agent_thought_chunk";
   if ((isMessage || isThought) && update.content.type === "text") {
+    const kind = isMessage ? "text" : "thought";
     const chunk = update.content.text;
-    const field = isMessage ? "text" : "thought";
-    return editOpenAssistant(state, (m) => ({ ...m, [field]: m[field] + chunk }));
+    return editOpenAssistant(state, (m) => ({ ...m, parts: appendChunk(m.parts, kind, chunk) }));
   }
   return state;
 }
@@ -101,8 +132,9 @@ function mergeToolCall(
   };
 }
 
-/// Add a new tool call (on `tool_call`) or merge into an existing one by id
-/// (on `tool_call_update`), within the open assistant message.
+/// Add a new tool call (on `tool_call`) as an ordered part, or merge into the
+/// existing tool part by id (on `tool_call_update`), within the open assistant
+/// message. A merge updates the part in place, preserving its position.
 function applyToolCall(
   state: TranscriptState,
   update: Extract<SessionUpdate, { sessionUpdate: "tool_call" | "tool_call_update" }>,
@@ -117,21 +149,19 @@ function applyToolCall(
       rawOutput: update.rawOutput,
       content: update.content ?? [],
     };
-    return editOpenAssistant(state, (m) => ({ ...m, toolCalls: [...m.toolCalls, call] }));
+    return editOpenAssistant(state, (m) => ({ ...m, parts: [...m.parts, { type: "tool", call }] }));
   }
   return editOpenAssistant(state, (m) => ({
     ...m,
-    toolCalls: m.toolCalls.map((call) =>
-      call.id === update.toolCallId ? mergeToolCall(call, update) : call,
+    parts: m.parts.map((p) =>
+      p.type === "tool" && p.call.id === update.toolCallId ? { type: "tool", call: mergeToolCall(p.call, update) } : p,
     ),
   }));
 }
 
-/// Assembles streaming session updates into a chat transcript.
-///
-/// M1 renders assistant answer text plus extended-thinking text. Tool calls,
-/// plans, and usage are handled outside the transcript (usage lives on the
-/// session; tool calls arrive in M2).
+/// Assembles streaming session updates into a chat transcript. Assistant turns
+/// keep their content ordered (thinking, tool calls, answer text interleaved as
+/// the agent emits them); usage/mode/plan live on the session, outside here.
 export function transcriptReducer(
   state: TranscriptState,
   action: TranscriptAction,
@@ -145,17 +175,13 @@ export function transcriptReducer(
           {
             id: action.userId,
             role: "user",
-            text: action.text,
-            thought: "",
-            toolCalls: [],
+            parts: [{ type: "text", text: action.text }],
             streaming: false,
           },
           {
             id: action.assistantId,
             role: "assistant",
-            text: "",
-            thought: "",
-            toolCalls: [],
+            parts: [],
             streaming: true,
           },
         ],
