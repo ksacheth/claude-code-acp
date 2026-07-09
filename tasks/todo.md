@@ -64,11 +64,25 @@ Plan: `tasks/plan.md` (approved: yes) — **M0 COMPLETE**
   than a parallel model/effort mechanism; palette state machine in a
   `useCommandPalette` hook over pure match/navigation helpers.
 
+## M6 — MCP, skills & settings (COMPLETE)
+
+- [x] M6-T1 — MCP servers per session: persisted config passed through the
+  standard session/new & load `mcpServers`; MCP tool calls render like built-ins.
+  Default mode/model applied per new session via set_config_option.
+- [x] M6-T2 — Settings UI (localStorage): node/engine path, spawn env, default
+  model/mode, MCP server list. Rust `agent_start` applies env to the child.
+- Skills & custom agents: no app work — skill commands ride the M5 palette,
+  custom agents the M5 agent picker, MCP/skill tool calls the M2 renderer.
+- Acceptance (live): a user-configured stdio MCP echo server's tool executed
+  and rendered as a tool call. Rust test: env passthrough to the child.
+
 ## Known debt (carry forward)
 
-- ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2 by splitting into
-  `useAgentConnection` + `useSessionActions`. Code Health gate now clean.
-- Engine `node` binary is resolved from PATH; a Finder-launched `.app` won't
-  inherit the shell PATH. Fine for dev launch; address with the M6 settings UI.
-- Bundle is ~657 kB (highlight.js languages). Irrelevant for a local app;
+- ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2.
+- ~~Finder-launched `.app` PATH gap~~ — RESOLVED in M6-T2: settings env feeds
+  the spawn (`agent_start` applies it); set a full PATH (and/or an absolute node
+  path) in Settings for a packaged launch.
+- Bundle is ~674 kB (highlight.js languages). Irrelevant for a local app;
   trim later if desired.
+- MCP UI covers stdio servers (the npx common case); http/sse are in the data
+  model but not the form — hand-edit localStorage or extend the form later.

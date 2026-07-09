@@ -3,6 +3,14 @@
 Source: `SPEC.md` §2 M6. MCP servers per session/project; skills & custom agents;
 a minimal settings UI (default mode/model, agent path, env).
 
+**Status: M6 COMPLETE.** MCP servers pass through session/new & load; a persisted
+settings UI (localStorage) edits spawn node/engine path + env, default
+model/mode, and the MCP server list; Rust `agent_start` applies env to the child
+(closing the Finder-launch PATH gap). Skills/custom agents ride existing surfaces
+(command palette + M5 agent picker + M2 tool rendering). 111 unit + 9 gated live
+(incl. a real stdio MCP echo-server tool call) + 6 Rust tests green; Code Health
+clean; build passes.
+
 ## What's already covered (verified) — shrinks the milestone
 
 - **MCP tool calls render like built-in tools** — an MCP server's tool arrives
