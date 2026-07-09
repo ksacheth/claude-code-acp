@@ -37,11 +37,10 @@ describe.skipIf(!existsSync(ENGINE))("connectAgent against the real engine", () 
 
     try {
       const conn = await connectAgent(childChannel(child));
-      expect(typeof conn.agentInfo.name).toBe("string");
-      expect(conn.agentInfo.name.length).toBeGreaterThan(0);
-      expect(conn.agentInfo.version).toBeTruthy();
+      expect(conn.agentInfo?.name).toBeTruthy();
+      expect(conn.agentInfo?.version).toBeTruthy();
       // The engine advertises loadSession per its initialize response.
-      expect(conn.capabilities.loadSession).toBe(true);
+      expect(conn.capabilities?.loadSession).toBe(true);
     } finally {
       child.stdin.end();
       child.kill();
