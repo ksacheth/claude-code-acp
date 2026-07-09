@@ -3,6 +3,12 @@
 Source: `SPEC.md` §2 M5. Per-session model picker + effort/thinking switching,
 and a slash-command autocomplete palette driven by `available_commands_update`.
 
+**Status: M5 COMPLETE.** Config options unified (model/effort/mode/agent render
+as header dropdowns, set via one `session/set_config_option`); slash-command
+palette wired to `available_commands_update`. 97 unit tests + 8 gated live tests
+(incl. a model round-trip and a commands-announcement test) green; Code Health
+gate clean; production build passes.
+
 ## What the engine gives us (verified in `src/acp-agent.ts`)
 
 The engine **unifies** mode, model, effort, agent, and fast-mode into a single

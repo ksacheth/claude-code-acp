@@ -52,6 +52,18 @@ Plan: `tasks/plan.md` (approved: yes) — **M0 COMPLETE**
 - Architecture: create-before-load so replayed updates route by id; a separate
   `useSessionHistory` hook owns list/resume.
 
+## M5 — Model, effort & commands (COMPLETE)
+
+- [x] M5-T1 — unified config options (model/effort/mode/agent) via
+  session/set_config_option; header renders each multi-option select
+- [x] M5-T2 — slash command palette (available_commands_update → `/` autocomplete)
+- Acceptance (live): set_config_option(model) round-trips a changed currentValue;
+  session/new announces the agent's command set.
+- Architecture: migrated the M2 mode switcher onto the engine's unified
+  `configOptions` (one field, one action, one request, generic renderer) rather
+  than a parallel model/effort mechanism; palette state machine in a
+  `useCommandPalette` hook over pure match/navigation helpers.
+
 ## Known debt (carry forward)
 
 - ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2 by splitting into
