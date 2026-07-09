@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import "./App.css";
+import { Markdown } from "./components/Markdown";
 import { useAgent, type ConnectionStatus } from "./useAgent";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -47,7 +48,7 @@ function App() {
           <div key={m.id} className={`message message-${m.role}`}>
             <div className="role">{m.role}</div>
             <div className="text">
-              {m.text}
+              {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
               {m.streaming && <span className="caret" />}
             </div>
           </div>
