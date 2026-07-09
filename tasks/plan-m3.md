@@ -4,6 +4,10 @@ Source: `SPEC.md` §2 M3. A sidebar of sessions, each bound to its own project
 directory (cwd); multiple sessions active concurrently, switchable without
 losing streams.
 
+**Status: M3 COMPLETE.** One agent process hosts many sessions; a sidebar
+switches between them; updates route by sessionId. A live test proved two
+concurrent turns stream isolated replies on one connection. Code Health clean.
+
 ## Key architecture fact (verified)
 
 The engine keeps `this.sessions` keyed by sessionId and stamps every

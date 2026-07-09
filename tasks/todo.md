@@ -34,6 +34,15 @@ Plan: `tasks/plan.md` (approved: yes) — **M0 COMPLETE**
 - Architecture: session updates routed by a pure `routeSessionUpdate`
   (usage/mode/plan/transcript); permission resolved via a ref-held resolver.
 
+## M3 — Multi-session & multi-project (COMPLETE)
+
+- [x] M3-T1 — sessions store reducer (per-session transcript/usage/mode/plan)
+- [x] M3-T2 — hooks wired to the store; updates routed by sessionId
+- [x] M3-T3 — session sidebar + switching (two-column shell)
+- Architecture: ONE agent process hosts N sessions; `sessionsReducer` keys all
+  per-session state by id. Live-verified: two concurrent turns on one
+  connection stream isolated replies.
+
 ## Known debt (carry forward)
 
 - ~~`useAgent` cyclomatic complexity~~ — RESOLVED in M1-T2 by splitting into
