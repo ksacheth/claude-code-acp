@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import { useState } from "react";
 
-import type { ClientContext, SessionNotification } from "@agentclientprotocol/sdk";
+import type {
+  ClientContext,
+  RequestPermissionRequest,
+  RequestPermissionResponse,
+  SessionNotification,
+} from "@agentclientprotocol/sdk";
 
 import { connectAgent, type AgentConnection } from "./connection";
 import { startAgent, stopAgent, tauriChannel } from "./tauriChannel";
@@ -22,6 +27,7 @@ export interface AgentConnectionHandle {
 export function useAgentConnection(
   ctxRef: MutableRefObject<ClientContext | null>,
   onUpdate: (notification: SessionNotification) => void,
+  onPermissionRequest: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>,
   onReset: () => void,
 ): AgentConnectionHandle {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
@@ -36,7 +42,10 @@ export function useAgentConnection(
     const startedAt = performance.now();
     try {
       await startAgent();
-      const conn = await connectAgent(tauriChannel, { onSessionUpdate: onUpdate });
+      const conn = await connectAgent(tauriChannel, {
+        onSessionUpdate: onUpdate,
+        onPermissionRequest,
+      });
       if (disposedRef.current) {
         await stopAgent();
         return;
@@ -58,7 +67,7 @@ export function useAgentConnection(
         setStatus("error");
       }
     }
-  }, [ctxRef, onUpdate]);
+  }, [ctxRef, onUpdate, onPermissionRequest]);
 
   const reconnect = useCallback(async () => {
     await stopAgent().catch(() => {});

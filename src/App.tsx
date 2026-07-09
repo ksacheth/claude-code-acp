@@ -1,6 +1,7 @@
 import "./App.css";
 import { Composer } from "./components/Composer";
 import { Header } from "./components/Header";
+import { PermissionModal } from "./components/PermissionModal";
 import { TranscriptView } from "./components/Transcript";
 import { useAgent } from "./useAgent";
 
@@ -41,6 +42,10 @@ function App() {
           onSend={(text) => void agent.sendPrompt(text)}
           onCancel={() => void agent.cancel()}
         />
+      )}
+
+      {agent.permission && (
+        <PermissionModal request={agent.permission} onResolve={agent.resolvePermission} />
       )}
     </main>
   );

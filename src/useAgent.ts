@@ -1,6 +1,11 @@
 import { useCallback, useReducer, useRef, useState } from "react";
 
-import type { ClientContext, SessionNotification } from "@agentclientprotocol/sdk";
+import type {
+  ClientContext,
+  RequestPermissionRequest,
+  RequestPermissionResponse,
+  SessionNotification,
+} from "@agentclientprotocol/sdk";
 
 import {
   useAgentConnection,
@@ -26,9 +31,13 @@ export interface AgentState {
   canPrompt: boolean;
   /// True while a turn is streaming (a prompt is in flight).
   turnActive: boolean;
+  /// A permission request awaiting the user's decision, if any.
+  permission?: RequestPermissionRequest;
   pickDirectory: () => Promise<void>;
   sendPrompt: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
+  /// Answer the pending permission request.
+  resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
 }
 
@@ -39,6 +48,10 @@ export function useAgent(): AgentState {
   const ctxRef = useRef<ClientContext | null>(null);
   const [transcript, dispatch] = useReducer(transcriptReducer, emptyTranscript);
   const [usage, setUsage] = useState<Usage>();
+  const [permission, setPermission] = useState<RequestPermissionRequest>();
+  // The pending resolver is held in a ref so resolving is a plain side effect,
+  // not work inside a state updater.
+  const resolverRef = useRef<((response: RequestPermissionResponse) => void) | null>(null);
 
   const onUpdate = useCallback((notification: SessionNotification) => {
     const update = notification.update;
@@ -49,8 +62,21 @@ export function useAgent(): AgentState {
     dispatch({ kind: "update", update });
   }, []);
 
+  const onPermissionRequest = useCallback((request: RequestPermissionRequest) => {
+    return new Promise<RequestPermissionResponse>((resolve) => {
+      resolverRef.current = resolve;
+      setPermission(request);
+    });
+  }, []);
+
+  const resolvePermission = useCallback((response: RequestPermissionResponse) => {
+    resolverRef.current?.(response);
+    resolverRef.current = null;
+    setPermission(undefined);
+  }, []);
+
   const session = useSessionActions(ctxRef, dispatch);
-  const connection = useAgentConnection(ctxRef, onUpdate, session.reset);
+  const connection = useAgentConnection(ctxRef, onUpdate, onPermissionRequest, session.reset);
 
   return {
     status: connection.status,
@@ -62,9 +88,11 @@ export function useAgent(): AgentState {
     canPrompt:
       connection.status === "connected" && !!session.sessionId && !transcript.turnActive,
     turnActive: transcript.turnActive,
+    permission,
     pickDirectory: session.pickDirectory,
     sendPrompt: session.sendPrompt,
     cancel: session.cancel,
+    resolvePermission,
     reconnect: connection.reconnect,
   };
 }
