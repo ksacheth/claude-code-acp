@@ -44,6 +44,7 @@ export function Workspace({
         disabled={!connected}
         canSend={canPrompt}
         busy={active.transcript.turnActive}
+        commands={active.commands}
         onSend={onSend}
         onCancel={onCancel}
       />

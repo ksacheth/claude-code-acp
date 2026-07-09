@@ -259,6 +259,36 @@ describe.skipIf(!enabled)("live prompt against the real model", () => {
     }
   }, 60000);
 
+  it("announces the agent's slash commands after session/new", async () => {
+    const child = spawn("node", [ENGINE], {
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
+    try {
+      let names: string[] = [];
+      const gotCommands = new Promise<void>((resolveGot) => {
+        void connectAgent(childChannel(child), {
+          onSessionUpdate: (n) => {
+            if (n.update.sessionUpdate === "available_commands_update") {
+              names = n.update.availableCommands.map((c) => c.name);
+              resolveGot();
+            }
+          },
+        }).then((conn) =>
+          conn.ctx.request(methods.agent.session.new, { cwd: process.cwd(), mcpServers: [] }),
+        );
+      });
+
+      await gotCommands;
+      // The engine ships built-in commands (e.g. compact); the palette renders
+      // whatever this list contains.
+      expect(names.length).toBeGreaterThan(0);
+    } finally {
+      child.stdin.end();
+      child.kill();
+    }
+  }, 60000);
+
   it("resumes a persisted session and replays its history in a fresh process", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "resume-"));
     const codeword = "xyzzy";
