@@ -36,6 +36,22 @@ body {
   font-weight: 600;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+
+.usage {
+  font-size: 0.78em;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage .cost {
+  color: #2e9e5b;
+}
+
 .status {
   display: inline-flex;
   align-items: center;

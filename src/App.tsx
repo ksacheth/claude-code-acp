@@ -1,31 +1,21 @@
 import "./App.css";
 import { Composer } from "./components/Composer";
+import { Header } from "./components/Header";
 import { TranscriptView } from "./components/Transcript";
-import { useAgent, type ConnectionStatus } from "./useAgent";
-
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  connecting: "Connecting to engine…",
-  connected: "Connected",
-  disconnected: "Disconnected",
-  error: "Connection failed",
-};
+import { useAgent } from "./useAgent";
 
 function App() {
   const agent = useAgent();
-  const { status, agentInfo, error, cwd, transcript } = agent;
+  const { status, agentInfo, error, cwd, transcript, usage } = agent;
   const offline = status === "disconnected" || status === "error";
 
   return (
     <main className="app">
-      <header className="app-header">
-        <div className="title">Claude Tauri</div>
-        <div className={`status status-${status}`}>
-          <span className="status-dot" />
-          {status === "connected" && agentInfo
-            ? `${agentInfo.name} v${agentInfo.version}`
-            : STATUS_LABEL[status]}
-        </div>
-      </header>
+      <Header
+        status={status}
+        agentLabel={agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined}
+        usage={usage}
+      />
 
       {error && <pre className="error">{error}</pre>}
 
