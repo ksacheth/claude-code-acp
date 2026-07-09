@@ -12,15 +12,16 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 
 interface HeaderProps {
   status: ConnectionStatus;
-  agentLabel?: string;
+  agentInfo?: { name: string; version: string } | null;
   usage?: Usage;
   modes?: SessionModeState;
   onSetMode: (modeId: SessionModeId) => void;
 }
 
 /// The top bar: app title, mode selector, live context/cost usage, and status.
-export function Header({ status, agentLabel, usage, modes, onSetMode }: HeaderProps) {
+export function Header({ status, agentInfo, usage, modes, onSetMode }: HeaderProps) {
   const cost = usage && formatCost(usage.cost);
+  const agentLabel = agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined;
   return (
     <header className="app-header">
       <div className="title">Claude Tauri</div>

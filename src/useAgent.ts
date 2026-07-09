@@ -17,7 +17,7 @@ import { routeSessionUpdate } from "./session/routeUpdate";
 import { emptyTranscript, transcriptReducer, type TranscriptState } from "./session/transcript";
 import type { Usage } from "./session/usage";
 
-import type { SessionModeId, SessionModeState } from "@agentclientprotocol/sdk";
+import type { PlanEntry, SessionModeId, SessionModeState } from "@agentclientprotocol/sdk";
 
 export type { ConnectionStatus };
 
@@ -30,6 +30,8 @@ export interface AgentState {
   transcript: TranscriptState;
   /// Latest context/cost usage, once the engine reports it.
   usage?: Usage;
+  /// The current execution plan, if the agent is planning.
+  plan?: PlanEntry[];
   /// True while a session exists and no turn is in flight.
   canPrompt: boolean;
   /// True while a turn is streaming (a prompt is in flight).
@@ -55,6 +57,7 @@ export function useAgent(): AgentState {
   const ctxRef = useRef<ClientContext | null>(null);
   const [transcript, dispatch] = useReducer(transcriptReducer, emptyTranscript);
   const [usage, setUsage] = useState<Usage>();
+  const [plan, setPlan] = useState<PlanEntry[]>();
   const [permission, setPermission] = useState<RequestPermissionRequest>();
   // The pending resolver is held in a ref so resolving is a plain side effect,
   // not work inside a state updater.
@@ -68,6 +71,7 @@ export function useAgent(): AgentState {
       routeSessionUpdate(notification.update, {
         onUsage: setUsage,
         onModeChange: applyModeUpdate,
+        onPlan: setPlan,
         onTranscript: (update) => dispatch({ kind: "update", update }),
       });
     },
@@ -96,6 +100,7 @@ export function useAgent(): AgentState {
     cwd: session.cwd,
     transcript,
     usage,
+    plan,
     canPrompt:
       connection.status === "connected" && !!session.sessionId && !transcript.turnActive,
     turnActive: transcript.turnActive,

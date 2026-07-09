@@ -1,20 +1,21 @@
 import "./App.css";
 import { Composer } from "./components/Composer";
+import { DisconnectBanner } from "./components/DisconnectBanner";
 import { Header } from "./components/Header";
 import { PermissionModal } from "./components/PermissionModal";
+import { PlanChecklist } from "./components/PlanChecklist";
 import { TranscriptView } from "./components/Transcript";
 import { useAgent } from "./useAgent";
 
 function App() {
   const agent = useAgent();
   const { status, agentInfo, error, cwd, transcript, usage } = agent;
-  const offline = status === "disconnected" || status === "error";
 
   return (
     <main className="app">
       <Header
         status={status}
-        agentLabel={agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined}
+        agentInfo={agentInfo}
         usage={usage}
         modes={agent.modes}
         onSetMode={(modeId) => void agent.setMode(modeId)}
@@ -22,18 +23,15 @@ function App() {
 
       {error && <pre className="error">{error}</pre>}
 
-      {offline && (
-        <div className="banner">
-          <span>{status === "error" ? "Engine failed to start." : "Engine disconnected."}</span>
-          <button onClick={() => void agent.reconnect()}>Reconnect</button>
-        </div>
-      )}
+      <DisconnectBanner status={status} onReconnect={() => void agent.reconnect()} />
 
       <TranscriptView
         messages={transcript.messages}
         showPicker={!cwd && status === "connected"}
         onPickDirectory={() => void agent.pickDirectory()}
       />
+
+      {agent.plan && <PlanChecklist entries={agent.plan} />}
 
       {cwd && (
         <Composer

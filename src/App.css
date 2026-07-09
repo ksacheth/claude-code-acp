@@ -380,6 +380,57 @@ button.cancel {
   font-size: 0.9em;
 }
 
+.plan {
+  margin: 0 1em 0.6em;
+  padding: 0.4em 0.7em;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+
+.plan > summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.plan-count {
+  color: #888;
+  font-weight: 400;
+}
+
+.plan-list {
+  margin: 0.4em 0 0.1em;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-entry {
+  display: flex;
+  gap: 0.5em;
+  padding: 0.12em 0;
+}
+
+.plan-mark {
+  flex: none;
+  color: #888;
+}
+
+.plan-in_progress {
+  color: #9a7d1e;
+}
+.plan-in_progress .plan-mark {
+  color: #c9a227;
+}
+
+.plan-completed {
+  color: #888;
+  text-decoration: line-through;
+}
+.plan-completed .plan-mark {
+  color: #28a745;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

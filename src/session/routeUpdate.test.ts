@@ -6,12 +6,23 @@ import { routeSessionUpdate, type UpdateHandlers } from "./routeUpdate";
 function handlers(): UpdateHandlers & {
   usage: ReturnType<typeof vi.fn>;
   mode: ReturnType<typeof vi.fn>;
+  plan: ReturnType<typeof vi.fn>;
   transcript: ReturnType<typeof vi.fn>;
 } {
   const usage = vi.fn();
   const mode = vi.fn();
+  const plan = vi.fn();
   const transcript = vi.fn();
-  return { onUsage: usage, onModeChange: mode, onTranscript: transcript, usage, mode, transcript };
+  return {
+    onUsage: usage,
+    onModeChange: mode,
+    onPlan: plan,
+    onTranscript: transcript,
+    usage,
+    mode,
+    plan,
+    transcript,
+  };
 }
 
 describe("routeSessionUpdate", () => {
@@ -32,6 +43,14 @@ describe("routeSessionUpdate", () => {
       h,
     );
     expect(h.mode).toHaveBeenCalledWith("plan");
+    expect(h.transcript).not.toHaveBeenCalled();
+  });
+
+  it("routes plan updates to onPlan", () => {
+    const h = handlers();
+    const entries = [{ content: "step 1", priority: "high", status: "pending" }];
+    routeSessionUpdate({ sessionUpdate: "plan", entries } as SessionUpdate, h);
+    expect(h.plan).toHaveBeenCalledWith(entries);
     expect(h.transcript).not.toHaveBeenCalled();
   });
 

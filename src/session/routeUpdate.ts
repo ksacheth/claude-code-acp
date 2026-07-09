@@ -1,4 +1,4 @@
-import type { SessionModeId, SessionUpdate } from "@agentclientprotocol/sdk";
+import type { PlanEntry, SessionModeId, SessionUpdate } from "@agentclientprotocol/sdk";
 
 import type { Usage } from "./usage";
 
@@ -6,6 +6,7 @@ import type { Usage } from "./usage";
 export interface UpdateHandlers {
   onUsage: (usage: Usage) => void;
   onModeChange: (modeId: SessionModeId) => void;
+  onPlan: (entries: PlanEntry[]) => void;
   /// Everything else (message/thought chunks, tool calls) goes to the transcript.
   onTranscript: (update: SessionUpdate) => void;
 }
@@ -19,6 +20,9 @@ export function routeSessionUpdate(update: SessionUpdate, handlers: UpdateHandle
       return;
     case "current_mode_update":
       handlers.onModeChange(update.currentModeId);
+      return;
+    case "plan":
+      handlers.onPlan(update.entries);
       return;
     default:
       handlers.onTranscript(update);
