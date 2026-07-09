@@ -1,9 +1,6 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+// No <StrictMode>: the root effect owns the engine subprocess, and StrictMode's
+// intentional double-mount in dev would spawn (and orphan) a second agent.
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<App />);

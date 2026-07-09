@@ -26,6 +26,43 @@
   color: #888;
 }
 
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  color: #666;
+}
+
+.status-dot {
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.status-connecting .status-dot {
+  background: #e0a800;
+}
+.status-connected .status-dot {
+  background: #28a745;
+}
+.status-disconnected .status-dot,
+.status-error .status-dot {
+  background: #dc3545;
+}
+
+.error {
+  max-width: 40em;
+  margin: 1em auto;
+  padding: 0.75em 1em;
+  text-align: left;
+  white-space: pre-wrap;
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 6px;
+  color: #b02a37;
+  font-size: 0.85em;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
