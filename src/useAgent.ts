@@ -1,5 +1,6 @@
 import { useCallback, useReducer, useRef, useState } from "react";
 
+import { useOpenSessionsPersistence } from "./session/useOpenSessionsPersistence";
 import type {
   ClientContext,
   RequestPermissionRequest,
@@ -86,7 +87,14 @@ export function useAgent(): AgentState {
     setPermission(undefined);
   }, []);
 
-  const onReset = useCallback(() => dispatch({ kind: "clear" }), []);
+  // onReset runs before a reconnect clears the store; it also tells the
+  // persistence layer to drop hydration (via a ref, since that callback is
+  // created below). Stable so the connection isn't torn down on every render.
+  const notifyResetRef = useRef<() => void>(() => {});
+  const onReset = useCallback(() => {
+    notifyResetRef.current();
+    dispatch({ kind: "clear" });
+  }, []);
 
   const openIds = sessions.sessions.map((s) => s.id);
   const actions = useSessionActions(ctxRef, dispatch, sessions.activeId, settingsRef);
@@ -96,6 +104,13 @@ export function useAgent(): AgentState {
     onPermissionRequest,
     onReset,
   });
+
+  notifyResetRef.current = useOpenSessionsPersistence(
+    connection.status,
+    sessions.sessions,
+    sessions.activeId,
+    history.restoreSessions,
+  );
 
   const active = activeSession(sessions);
 
