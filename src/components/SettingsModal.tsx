@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { Settings } from "../session/settings";
+import type { Settings, ThemeMode } from "../session/settings";
 import {
   emptyServerForm,
   formToSettings,
@@ -37,6 +37,21 @@ export function SettingsModal({ settings, onSave, onClose }: SettingsModalProps)
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-title">Settings</div>
+
+        <section className="settings-section">
+          <h3>Appearance</h3>
+          <label>
+            Theme
+            <select
+              value={form.theme}
+              onChange={(e) => set({ theme: e.currentTarget.value as ThemeMode })}
+            >
+              <option value="auto">Auto (match system)</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+        </section>
 
         <section className="settings-section">
           <h3>Engine</h3>

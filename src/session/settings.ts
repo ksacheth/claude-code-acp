@@ -1,5 +1,8 @@
 import type { McpServer } from "@agentclientprotocol/sdk";
 
+/// How the UI picks its color scheme: an explicit choice, or follow the OS.
+export type ThemeMode = "light" | "dark" | "auto";
+
 /// A name=value pair (engine env, or an MCP server's env).
 export interface EnvVar {
   name: string;
@@ -27,11 +30,13 @@ export interface Settings {
   /// Preferred model/mode applied to each new session, when set.
   defaultModel?: string;
   defaultMode?: string;
+  /// UI color scheme (defaults to following the OS).
+  theme: ThemeMode;
   /// MCP servers passed to every session.
   mcpServers: McpServerConfig[];
 }
 
-export const defaultSettings: Settings = { env: [], mcpServers: [] };
+export const defaultSettings: Settings = { env: [], mcpServers: [], theme: "auto" };
 
 const STORAGE_KEY = "claude-tauri.settings";
 
@@ -67,8 +72,13 @@ export function normalizeSettings(input: unknown): Settings {
     env: envVars(raw.env),
     defaultModel: str(raw.defaultModel),
     defaultMode: str(raw.defaultMode),
+    theme: themeMode(raw.theme),
     mcpServers: mcpServers(raw.mcpServers),
   };
+}
+
+function themeMode(value: unknown): ThemeMode {
+  return value === "light" || value === "dark" ? value : "auto";
 }
 
 /// Convert configured stdio servers into ACP `McpServer[]` for `session/new`.

@@ -9,6 +9,7 @@ const settings: Settings = {
   env: [{ name: "PATH", value: "/usr/local/bin" }],
   defaultModel: "opus",
   defaultMode: "plan",
+  theme: "dark",
   mcpServers: [{ name: "fs", command: "npx", args: ["-y", "server"], env: [{ name: "K", value: "v" }] }],
 };
 
@@ -30,6 +31,7 @@ describe("settingsToForm / formToSettings", () => {
       nodePath: "",
       defaultModel: " ",
       defaultMode: "",
+      theme: "auto" as const,
       envText: "",
       servers: [
         { name: "ok", command: "npx", argsText: "a b", envText: "" },

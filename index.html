@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + React + Typescript</title>
+    <script>
+      // Set the color scheme before first paint to avoid a flash. Mirrors the
+      // "auto" fallback in src/session/theme.ts; React keeps it in sync after.
+      try {
+        var stored = JSON.parse(localStorage.getItem("claude-tauri.settings") || "{}");
+        var mode = stored.theme === "light" || stored.theme === "dark" ? stored.theme : null;
+        document.documentElement.dataset.theme =
+          mode || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

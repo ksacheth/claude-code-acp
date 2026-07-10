@@ -3,6 +3,7 @@ import {
   parseArgs,
   parseEnv,
   type Settings,
+  type ThemeMode,
 } from "./settings";
 
 /// One MCP server as edited in the form: args and env are freeform text that
@@ -20,6 +21,7 @@ export interface SettingsForm {
   nodePath: string;
   defaultModel: string;
   defaultMode: string;
+  theme: ThemeMode;
   envText: string;
   servers: ServerForm[];
 }
@@ -33,6 +35,7 @@ export function settingsToForm(settings: Settings): SettingsForm {
     nodePath: settings.nodePath ?? "",
     defaultModel: settings.defaultModel ?? "",
     defaultMode: settings.defaultMode ?? "",
+    theme: settings.theme,
     envText: formatEnv(settings.env),
     servers: settings.mcpServers.map((s) => ({
       name: s.name,
@@ -51,6 +54,7 @@ export function formToSettings(form: SettingsForm): Settings {
     nodePath: trimmed(form.nodePath),
     defaultModel: trimmed(form.defaultModel),
     defaultMode: trimmed(form.defaultMode),
+    theme: form.theme,
     env: parseEnv(form.envText),
     mcpServers: form.servers
       .map((s) => ({

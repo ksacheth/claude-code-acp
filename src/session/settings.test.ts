@@ -37,6 +37,7 @@ describe("loadSettings / saveSettings", () => {
       env: [{ name: "PATH", value: "/usr/local/bin" }],
       defaultModel: "opus",
       defaultMode: "plan",
+      theme: "dark",
       mcpServers: [{ name: "fs", command: "npx", args: ["-y", "server"], env: [] }],
     };
     expect(saveSettings(settings, store)).toBe(true);
@@ -66,6 +67,13 @@ describe("normalizeSettings", () => {
     expect(s.env).toEqual([{ name: "A", value: "1" }]);
     expect(s.mcpServers).toHaveLength(1);
     expect(s.mcpServers[0]).toEqual({ name: "ok", command: "npx", args: ["x"], env: [{ name: "K", value: "v" }] });
+  });
+
+  it("keeps a valid theme and defaults anything else to auto", () => {
+    expect(normalizeSettings({ theme: "dark" }).theme).toBe("dark");
+    expect(normalizeSettings({ theme: "light" }).theme).toBe("light");
+    expect(normalizeSettings({ theme: "neon" }).theme).toBe("auto");
+    expect(normalizeSettings({}).theme).toBe("auto");
   });
 });
 

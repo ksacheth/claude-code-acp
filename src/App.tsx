@@ -9,12 +9,14 @@ import { PermissionModal } from "./components/PermissionModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
+import { useTheme } from "./session/theme";
 import { useAgent } from "./useAgent";
 
 function App() {
   const agent = useAgent();
   const { status, agentInfo, error, active } = agent;
   const connected = status === "connected";
+  useTheme(agent.settings.theme);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState<SessionInfo[] | null>(null);

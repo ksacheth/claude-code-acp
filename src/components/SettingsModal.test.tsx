@@ -10,6 +10,7 @@ const settings: Settings = {
   env: [{ name: "PATH", value: "/usr/local/bin" }],
   defaultModel: "opus",
   defaultMode: "plan",
+  theme: "auto",
   mcpServers: [{ name: "filesystem", command: "npx", args: ["-y", "server"], env: [] }],
 };
 
@@ -29,7 +30,7 @@ describe("SettingsModal", () => {
 
   it("renders empty fields for default (unconfigured) settings", () => {
     const html = renderToStaticMarkup(
-      <SettingsModal settings={{ env: [], mcpServers: [] }} onSave={() => {}} onClose={() => {}} />,
+      <SettingsModal settings={{ env: [], mcpServers: [], theme: "auto" }} onSave={() => {}} onClose={() => {}} />,
     );
     expect(html).toContain("Settings");
     expect(html).not.toContain("mcp-row");

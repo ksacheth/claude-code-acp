@@ -85,6 +85,7 @@ body {
 }
 
 .settings-modal input,
+.settings-modal select,
 .settings-modal textarea {
   display: block;
   width: 100%;
@@ -149,13 +150,12 @@ body {
   border: 1px solid rgba(127, 127, 127, 0.4);
 }
 
-@media (prefers-color-scheme: dark) {
-  .settings-modal input,
-  .settings-modal textarea {
-    background: #2c2c2e;
-    border-color: #444;
-    color: inherit;
-  }
+html[data-theme="dark"] .settings-modal input,
+html[data-theme="dark"] .settings-modal select,
+html[data-theme="dark"] .settings-modal textarea {
+  background: #2c2c2e;
+  border-color: #444;
+  color: inherit;
 }
 
 .history-modal {
@@ -263,10 +263,8 @@ body {
   text-align: left;
 }
 
-@media (prefers-color-scheme: dark) {
-  .sidebar {
-    border-color: #333;
-  }
+html[data-theme="dark"] .sidebar {
+  border-color: #333;
 }
 
 .app-header {
@@ -403,10 +401,8 @@ body {
   color: #6b6b6b;
 }
 
-@media (prefers-color-scheme: dark) {
-  .thought-body {
-    color: #b0b0b0;
-  }
+html[data-theme="dark"] .thought-body {
+  color: #b0b0b0;
 }
 
 .toolcalls {
@@ -762,10 +758,8 @@ button.cancel {
   border: 1px solid rgba(176, 42, 55, 0.4);
 }
 
-@media (prefers-color-scheme: dark) {
-  .modal {
-    background: #2a2a2c;
-  }
+html[data-theme="dark"] .modal {
+  background: #2a2a2c;
 }
 
 .error {
@@ -778,33 +772,31 @@ button.cancel {
   font-size: 0.82em;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #ececec;
-    background-color: #1c1c1e;
-  }
-  .app-header,
-  .composer {
-    border-color: #333;
-  }
-  .message .text {
-    background: #2c2c2e;
-  }
-  .composer input {
-    background: #2c2c2e;
-    border-color: #444;
-    color: inherit;
-  }
-  .command-palette {
-    background: #2a2a2c;
-    border-color: #444;
-  }
-  .command-item.active {
-    background: #33384d;
-  }
-  .command-name {
-    color: #8aa5ff;
-  }
+html[data-theme="dark"] {
+  color: #ececec;
+  background-color: #1c1c1e;
+}
+html[data-theme="dark"] .app-header,
+html[data-theme="dark"] .composer {
+  border-color: #333;
+}
+html[data-theme="dark"] .message .text {
+  background: #2c2c2e;
+}
+html[data-theme="dark"] .composer input {
+  background: #2c2c2e;
+  border-color: #444;
+  color: inherit;
+}
+html[data-theme="dark"] .command-palette {
+  background: #2a2a2c;
+  border-color: #444;
+}
+html[data-theme="dark"] .command-item.active {
+  background: #33384d;
+}
+html[data-theme="dark"] .command-name {
+  color: #8aa5ff;
 }
 
 /* Polished application shell ------------------------------------------------ */
@@ -812,6 +804,7 @@ button.cancel {
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   color: #2d2926;
   background: #f7f5f2;
+  color-scheme: light;
   --surface: #ffffff;
   --surface-subtle: #f7f5f2;
   --surface-muted: #efebe6;
@@ -1450,6 +1443,7 @@ button.cancel {
 }
 
 .settings-modal input,
+.settings-modal select,
 .settings-modal textarea {
   border-color: var(--border);
   border-radius: 9px;
@@ -1525,98 +1519,98 @@ button.cancel {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #eee9e4;
-    background: #191715;
-    --surface: #211f1d;
-    --surface-subtle: #191715;
-    --surface-muted: #2d2926;
-    --border: #393431;
-    --border-strong: #4b433e;
-    --text: #eee9e4;
-    --text-muted: #a79d95;
-    --accent: #dc7857;
-    --accent-strong: #ee8b69;
-    --accent-soft: #3a2923;
-    --success: #70a985;
-    --danger: #df6b6b;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.12);
-    --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.38);
-  }
+html[data-theme="dark"] {
+  color: #eee9e4;
+  background: #191715;
+  color-scheme: dark;
+  --surface: #211f1d;
+  --surface-subtle: #191715;
+  --surface-muted: #2d2926;
+  --border: #393431;
+  --border-strong: #4b433e;
+  --text: #eee9e4;
+  --text-muted: #a79d95;
+  --accent: #dc7857;
+  --accent-strong: #ee8b69;
+  --accent-soft: #3a2923;
+  --success: #70a985;
+  --danger: #df6b6b;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.38);
+}
 
-  .app,
-  .app-shell,
-  body {
-    background-color: var(--surface-subtle);
-  }
+html[data-theme="dark"] .app,
+html[data-theme="dark"] .app-shell,
+html[data-theme="dark"] body {
+  background-color: var(--surface-subtle);
+}
 
-  .sidebar {
-    border-color: var(--border);
-    background: #1d1b19;
-  }
+html[data-theme="dark"] .sidebar {
+  border-color: var(--border);
+  background: #1d1b19;
+}
 
-  .app-header {
-    border-color: var(--border);
-    background: rgba(33, 31, 29, 0.84);
-  }
+html[data-theme="dark"] .app-header {
+  border-color: var(--border);
+  background: rgba(33, 31, 29, 0.84);
+}
 
-  .history-button,
-  .settings-button,
-  .empty {
-    background: rgba(45, 41, 38, 0.6);
-  }
+html[data-theme="dark"] .history-button,
+html[data-theme="dark"] .settings-button,
+html[data-theme="dark"] .empty {
+  background: rgba(45, 41, 38, 0.6);
+}
 
-  .session-item:hover,
-  .session-item.active {
-    background: var(--surface-muted);
-  }
+html[data-theme="dark"] .session-item:hover,
+html[data-theme="dark"] .session-item.active {
+  background: var(--surface-muted);
+}
 
-  .session-item.active {
-    border-color: #574239;
-  }
+html[data-theme="dark"] .session-item.active {
+  border-color: #574239;
+}
 
-  .message .text,
-  .message-assistant .text,
-  .composer-box,
-  .command-palette,
-  .modal {
-    border-color: var(--border);
-    background: var(--surface);
-    color: var(--text);
-  }
+html[data-theme="dark"] .message .text,
+html[data-theme="dark"] .message-assistant .text,
+html[data-theme="dark"] .composer-box,
+html[data-theme="dark"] .command-palette,
+html[data-theme="dark"] .modal {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
 
-  .message-user .text {
-    border-color: var(--accent);
-    background: #b85c3e;
-  }
+html[data-theme="dark"] .message-user .text {
+  border-color: var(--accent);
+  background: #b85c3e;
+}
 
-  .thought {
-    background: #2c271d;
-  }
+html[data-theme="dark"] .thought {
+  background: #2c271d;
+}
 
-  .composer {
-    border: 0;
-    background: linear-gradient(to top, var(--surface) 72%, rgba(33, 31, 29, 0));
-  }
+html[data-theme="dark"] .composer {
+  border: 0;
+  background: linear-gradient(to top, var(--surface) 72%, rgba(33, 31, 29, 0));
+}
 
-  .composer textarea,
-  .settings-modal input,
-  .settings-modal textarea {
-    background: transparent;
-    color: var(--text);
-  }
+html[data-theme="dark"] .composer textarea,
+html[data-theme="dark"] .settings-modal input,
+html[data-theme="dark"] .settings-modal select,
+html[data-theme="dark"] .settings-modal textarea {
+  background: transparent;
+  color: var(--text);
+}
 
-  .config-select,
-  .usage,
-  .icon-button,
-  .attachment {
-    background: var(--surface-muted);
-  }
+html[data-theme="dark"] .config-select,
+html[data-theme="dark"] .usage,
+html[data-theme="dark"] .icon-button,
+html[data-theme="dark"] .attachment {
+  background: var(--surface-muted);
+}
 
-  .drop-overlay {
-    background: rgba(58, 41, 35, 0.94);
-  }
+html[data-theme="dark"] .drop-overlay {
+  background: rgba(58, 41, 35, 0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
