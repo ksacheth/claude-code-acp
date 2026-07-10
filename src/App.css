@@ -758,6 +758,35 @@ button.cancel {
   border: 1px solid rgba(176, 42, 55, 0.4);
 }
 
+.update-modal {
+  max-width: 30em;
+}
+
+.update-modal p {
+  margin: 0.6em 0;
+}
+
+.update-notes {
+  max-height: 12em;
+  margin: 0.8em 0;
+  padding: 0.6em 0.7em;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  background: rgba(127, 127, 127, 0.1);
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+
+.update-error {
+  color: #b02a37;
+}
+
+.update-status {
+  margin: 0.6em 0 0;
+  font-size: 0.85em;
+  color: #666;
+}
+
 html[data-theme="dark"] .modal {
   background: #2a2a2c;
 }

@@ -14,12 +14,22 @@ interface SettingsModalProps {
   settings: Settings;
   onSave: (next: Settings) => void;
   onClose: () => void;
+  onCheckForUpdates?: () => void;
+  checkingForUpdates?: boolean;
+  updateMessage?: string | null;
 }
 
 /// The settings modal: engine spawn (node path, engine path, env), per-session
 /// defaults (model/mode), and the MCP server list. Edits a local form draft and
 /// persists it on Save. Spawn changes take effect on the next reconnect.
-export function SettingsModal({ settings, onSave, onClose }: SettingsModalProps) {
+export function SettingsModal({
+  settings,
+  onSave,
+  onClose,
+  onCheckForUpdates,
+  checkingForUpdates = false,
+  updateMessage,
+}: SettingsModalProps) {
   const [form, setForm] = useState<SettingsForm>(() => settingsToForm(settings));
   const set = (patch: Partial<SettingsForm>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -51,6 +61,17 @@ export function SettingsModal({ settings, onSave, onClose }: SettingsModalProps)
               <option value="dark">Dark</option>
             </select>
           </label>
+        </section>
+
+        <section className="settings-section">
+          <h3>Updates</h3>
+          <p className="muted">The app checks for new releases when it starts.</p>
+          {onCheckForUpdates && (
+            <button type="button" onClick={onCheckForUpdates} disabled={checkingForUpdates}>
+              {checkingForUpdates ? "Checking…" : "Check for updates"}
+            </button>
+          )}
+          {updateMessage && <p className="update-status">{updateMessage}</p>}
         </section>
 
         <section className="settings-section">

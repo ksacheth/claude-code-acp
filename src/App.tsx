@@ -8,15 +8,18 @@ import { HistoryBrowser } from "./components/HistoryBrowser";
 import { PermissionModal } from "./components/PermissionModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
+import { UpdatePrompt } from "./components/UpdatePrompt";
 import { Workspace } from "./components/Workspace";
 import { useTheme } from "./session/theme";
 import { useAgent } from "./useAgent";
+import { useUpdater } from "./useUpdater";
 
 function App() {
   const agent = useAgent();
   const { status, agentInfo, error, active } = agent;
   const connected = status === "connected";
   useTheme(agent.settings.theme);
+  const updater = useUpdater();
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState<SessionInfo[] | null>(null);
@@ -83,6 +86,19 @@ function App() {
           settings={agent.settings}
           onSave={agent.saveSettings}
           onClose={() => setSettingsOpen(false)}
+          onCheckForUpdates={() => void updater.checkForUpdates()}
+          checkingForUpdates={updater.checking}
+          updateMessage={updater.message}
+        />
+      )}
+
+      {updater.update && (
+        <UpdatePrompt
+          update={updater.update}
+          installing={updater.installing}
+          error={updater.message?.startsWith("Could not install") ? updater.message : null}
+          onInstall={() => void updater.installUpdate()}
+          onDismiss={updater.dismissUpdate}
         />
       )}
     </div>

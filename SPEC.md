@@ -200,10 +200,12 @@ App (`claude-tauri/`):
 ## 9. Distribution
 
 - `.github/workflows/release.yml` builds macOS (arm64 + Intel), Windows, and
-  Linux installers via `tauri-apps/tauri-action` and attaches them to a draft
-  GitHub Release. Trigger by pushing a `vX.Y.Z` tag, or manually via
-  `workflow_dispatch`.
-- Releases are drafts by default — review and publish manually.
+  Linux installers plus signed updater artifacts via
+  `tauri-apps/tauri-action` and publishes them to a GitHub Release. Trigger by
+  pushing a full `vX.Y.Z` tag, or manually via `workflow_dispatch`.
+- The updater uses the published `latest.json` asset from the latest GitHub
+  Release. Keep `TAURI_SIGNING_PRIVATE_KEY` and the optional
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub Actions secrets.
 - Windows and Linux are build-verified by CI only; the engine spawn and
   runtime behavior on those platforms has not been exercised end-to-end.
   Treat non-macOS installers as unverified until someone runs one.
