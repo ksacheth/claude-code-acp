@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Personal Claude desktop app on the claude-agent-acp engine"
 authors = ["sacheth"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "claude_tauri_lib"
