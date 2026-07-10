@@ -6,12 +6,9 @@ import type {
 } from "@agentclientprotocol/sdk";
 
 import { patchCurrentValue, MODE_CONFIG_ID } from "./config";
-import {
-  emptyTranscript,
-  transcriptReducer,
-  type TranscriptState,
-} from "./transcript";
+import { emptyTranscript, transcriptReducer, type TranscriptState } from "./transcript";
 import type { Usage } from "./usage";
+import type { PromptImage } from "./attachments";
 
 /// All state for one session (bound to a project directory).
 export interface SessionState {
@@ -46,7 +43,14 @@ export type SessionsAction =
   | { kind: "setConfig"; sessionId: string; configOptions: SessionConfigOption[] }
   /// Optimistic single-value patch before the set_config_option response lands.
   | { kind: "patchConfig"; sessionId: string; configId: string; value: string }
-  | { kind: "submit"; sessionId: string; userId: string; assistantId: string; text: string }
+  | {
+      kind: "submit";
+      sessionId: string;
+      userId: string;
+      assistantId: string;
+      text: string;
+      images?: PromptImage[];
+    }
   | { kind: "end"; sessionId: string }
   | { kind: "update"; sessionId: string; update: SessionUpdate };
 
@@ -67,7 +71,14 @@ function applyUpdate(session: SessionState, update: SessionUpdate): SessionState
     case "current_mode_update":
       // The engine still announces mode changes here (e.g. auto plan mode); keep
       // the mode config option's currentValue in sync.
-      return { ...session, configOptions: patchCurrentValue(session.configOptions, MODE_CONFIG_ID, update.currentModeId) };
+      return {
+        ...session,
+        configOptions: patchCurrentValue(
+          session.configOptions,
+          MODE_CONFIG_ID,
+          update.currentModeId,
+        ),
+      };
     case "available_commands_update":
       return { ...session, commands: update.availableCommands };
     case "plan":
@@ -75,7 +86,10 @@ function applyUpdate(session: SessionState, update: SessionUpdate): SessionState
     case "session_info_update":
       return update.title ? { ...session, title: update.title } : session;
     default:
-      return { ...session, transcript: transcriptReducer(session.transcript, { kind: "update", update }) };
+      return {
+        ...session,
+        transcript: transcriptReducer(session.transcript, { kind: "update", update }),
+      };
   }
 }
 
@@ -90,6 +104,7 @@ function applyToSession(session: SessionState, action: SessionsAction): SessionS
           userId: action.userId,
           assistantId: action.assistantId,
           text: action.text,
+          images: action.images,
         }),
       };
     case "end":
@@ -132,7 +147,11 @@ function mapSession(
 }
 
 /// Pick the next active session after `removedId` leaves (the last remaining).
-function nextActive(sessions: SessionState[], removedId: string, activeId?: string): string | undefined {
+function nextActive(
+  sessions: SessionState[],
+  removedId: string,
+  activeId?: string,
+): string | undefined {
   if (activeId !== removedId) return activeId;
   const remaining = sessions.filter((s) => s.id !== removedId);
   return remaining.length ? remaining[remaining.length - 1].id : undefined;
@@ -149,7 +168,10 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
     case "clear":
       return emptySessions;
     case "setConfig":
-      return mapSession(state, action.sessionId, (s) => ({ ...s, configOptions: action.configOptions }));
+      return mapSession(state, action.sessionId, (s) => ({
+        ...s,
+        configOptions: action.configOptions,
+      }));
     case "patchConfig":
       return mapSession(state, action.sessionId, (s) => ({
         ...s,

@@ -17,7 +17,7 @@ export interface CommandPaletteState {
   /// Choose a command — fills the draft with `/name `.
   pick: (command: AvailableCommand) => void;
   /// Palette-aware keydown: navigates/accepts/dismisses while open, else no-op.
-  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 /// The `/` command-palette state machine for the composer: draft, filtering,
@@ -38,10 +38,13 @@ export function useCommandPalette(commands?: AvailableCommand[]): CommandPalette
     setDismissed(false);
   }, []);
 
-  const pick = useCallback((command: AvailableCommand) => setDraft(commandInsertText(command)), [setDraft]);
+  const pick = useCallback(
+    (command: AvailableCommand) => setDraft(commandInsertText(command)),
+    [setDraft],
+  );
 
   const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (!paletteOpen) return;
       const action = paletteKeyFor(e.key);
       if (!action) return;

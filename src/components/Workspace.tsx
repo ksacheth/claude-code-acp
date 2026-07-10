@@ -2,13 +2,14 @@ import type { SessionState } from "../session/sessions";
 import { Composer } from "./Composer";
 import { PlanChecklist } from "./PlanChecklist";
 import { TranscriptView } from "./Transcript";
+import type { PromptImage } from "../session/attachments";
 
 interface WorkspaceProps {
   active?: SessionState;
   connected: boolean;
   canPrompt: boolean;
   onNewSession: () => void;
-  onSend: (text: string) => void;
+  onSend: (text: string, images: PromptImage[]) => void;
   onCancel: () => void;
 }
 
@@ -27,8 +28,10 @@ export function Workspace({
       <section className="transcript">
         {connected && (
           <div className="empty">
-            <p>Open a project directory to start a session.</p>
-            <button onClick={onNewSession}>New session…</button>
+            <div className="empty-mark">C</div>
+            <h1>Start a new workspace</h1>
+            <p>Choose a project folder to chat with Claude in its context.</p>
+            <button onClick={onNewSession}>Choose project folder</button>
           </div>
         )}
       </section>

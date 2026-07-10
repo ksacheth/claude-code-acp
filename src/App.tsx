@@ -55,7 +55,7 @@ function App() {
           connected={connected}
           canPrompt={agent.canPrompt}
           onNewSession={() => void agent.newSession()}
-          onSend={(text) => void agent.sendPrompt(text)}
+          onSend={(text, images) => void agent.sendPrompt(text, images)}
           onCancel={() => void agent.cancel()}
         />
       </main>

@@ -1,6 +1,7 @@
 import { Markdown } from "./Markdown";
 import { ToolCall } from "./ToolCall";
 import type { Message, MessagePart } from "../session/transcript";
+import { imageDataUrl } from "../session/attachments";
 
 /// The scrolling message list for the active session.
 export function TranscriptView({ messages }: { messages: Message[] }) {
@@ -66,6 +67,17 @@ function PartView({ part, assistant, streaming, last }: PartViewProps) {
           {assistant ? <Markdown text={part.text} /> : part.text}
           {assistant && streaming && last && <span className="caret" />}
         </div>
+      );
+    case "image":
+      return (
+        <a
+          className="message-image"
+          href={imageDataUrl(part.image)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img src={imageDataUrl(part.image)} alt={part.image.name} />
+        </a>
       );
   }
 }

@@ -17,6 +17,7 @@ import { useSessionActions } from "./session/useSessionActions";
 import { useSessionHistory } from "./session/useSessionHistory";
 import { useSettings } from "./session/useSettings";
 import type { Settings } from "./session/settings";
+import type { PromptImage } from "./session/attachments";
 import {
   activeSession,
   emptySessions,
@@ -42,7 +43,7 @@ export interface AgentState {
   permission?: RequestPermissionRequest;
   newSession: () => Promise<void>;
   switchSession: (id: string) => void;
-  sendPrompt: (text: string) => Promise<void>;
+  sendPrompt: (text: string, images?: PromptImage[]) => Promise<void>;
   cancel: () => Promise<void>;
   setConfig: (configId: string, value: string) => Promise<void>;
   listSessions: () => Promise<SessionInfo[]>;
@@ -90,7 +91,11 @@ export function useAgent(): AgentState {
   const openIds = sessions.sessions.map((s) => s.id);
   const actions = useSessionActions(ctxRef, dispatch, sessions.activeId, settingsRef);
   const history = useSessionHistory(ctxRef, dispatch, openIds, settingsRef);
-  const connection = useAgentConnection(ctxRef, settingsRef, { onUpdate, onPermissionRequest, onReset });
+  const connection = useAgentConnection(ctxRef, settingsRef, {
+    onUpdate,
+    onPermissionRequest,
+    onReset,
+  });
 
   const active = activeSession(sessions);
 

@@ -4,6 +4,7 @@ import type {
   ToolCallStatus,
   ToolKind,
 } from "@agentclientprotocol/sdk";
+import type { PromptImage } from "./attachments";
 
 export type Role = "user" | "assistant";
 
@@ -24,6 +25,7 @@ export interface ToolCallView {
 /// all thinking above everything.
 export type MessagePart =
   | { type: "text"; text: string }
+  | { type: "image"; image: PromptImage }
   | { type: "thought"; text: string }
   | { type: "tool"; call: ToolCallView };
 
@@ -47,7 +49,7 @@ export const emptyTranscript: TranscriptState = { messages: [], turnActive: fals
 
 export type TranscriptAction =
   /// User sent a prompt: append their message and open an empty assistant message.
-  | { kind: "submit"; userId: string; assistantId: string; text: string }
+  | { kind: "submit"; userId: string; assistantId: string; text: string; images?: PromptImage[] }
   /// A streaming session update arrived.
   | { kind: "update"; update: SessionUpdate }
   /// The turn finished (prompt response received or cancelled).
@@ -100,7 +102,10 @@ function appendChunk(parts: MessagePart[], kind: "text" | "thought", chunk: stri
   if (last && last.type === kind) {
     return [...parts.slice(0, -1), { ...last, text: last.text + chunk }];
   }
-  return [...parts, kind === "text" ? { type: "text", text: chunk } : { type: "thought", text: chunk }];
+  return [
+    ...parts,
+    kind === "text" ? { type: "text", text: chunk } : { type: "thought", text: chunk },
+  ];
 }
 
 /// Route a text/thought chunk into the open assistant message as an ordered
@@ -112,6 +117,19 @@ function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptSt
     const kind = isMessage ? "text" : "thought";
     const chunk = update.content.text;
     return editOpenAssistant(state, (m) => ({ ...m, parts: appendChunk(m.parts, kind, chunk) }));
+  }
+  if (isMessage && update.content.type === "image") {
+    const image: PromptImage = {
+      id: `assistant-image-${state.messages.length}-${update.content.data.slice(0, 12)}`,
+      name: "Generated image",
+      mimeType: update.content.mimeType,
+      data: update.content.data,
+      size: 0,
+    };
+    return editOpenAssistant(state, (m) => ({
+      ...m,
+      parts: [...m.parts, { type: "image", image }],
+    }));
   }
   return state;
 }
@@ -154,7 +172,9 @@ function applyToolCall(
   return editOpenAssistant(state, (m) => ({
     ...m,
     parts: m.parts.map((p) =>
-      p.type === "tool" && p.call.id === update.toolCallId ? { type: "tool", call: mergeToolCall(p.call, update) } : p,
+      p.type === "tool" && p.call.id === update.toolCallId
+        ? { type: "tool", call: mergeToolCall(p.call, update) }
+        : p,
     ),
   }));
 }
@@ -167,7 +187,10 @@ export function transcriptReducer(
   action: TranscriptAction,
 ): TranscriptState {
   switch (action.kind) {
-    case "submit":
+    case "submit": {
+      const userParts: MessagePart[] = [];
+      if (action.text) userParts.push({ type: "text", text: action.text });
+      for (const image of action.images ?? []) userParts.push({ type: "image", image });
       return {
         turnActive: true,
         messages: [
@@ -175,7 +198,7 @@ export function transcriptReducer(
           {
             id: action.userId,
             role: "user",
-            parts: [{ type: "text", text: action.text }],
+            parts: userParts,
             streaming: false,
           },
           {
@@ -186,6 +209,7 @@ export function transcriptReducer(
           },
         ],
       };
+    }
 
     case "update": {
       const update = action.update;

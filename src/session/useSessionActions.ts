@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 
 import type { SessionsAction } from "./sessions";
 import { toMcpServers, type Settings } from "./settings";
+import { contentBlocksForPrompt, type PromptImage } from "./attachments";
 
 export interface SessionActions {
   /// Open a directory picker and start a new session rooted there (made active).
@@ -12,7 +13,7 @@ export interface SessionActions {
   /// Show an existing session.
   switchSession: (id: string) => void;
   /// Send a prompt in the active session and stream the reply.
-  sendPrompt: (text: string) => Promise<void>;
+  sendPrompt: (text: string, images?: PromptImage[]) => Promise<void>;
   /// Cancel the active session's in-flight turn; partial output is kept.
   cancel: () => Promise<void>;
   /// Set one of the active session's config options (mode/model/effort/agent),
@@ -24,6 +25,7 @@ interface TurnDeps {
   ctx: ClientContext;
   sessionId: string;
   text: string;
+  images: PromptImage[];
   seq: number;
   dispatch: Dispatch<SessionsAction>;
 }
@@ -44,7 +46,11 @@ async function applyDefaults(
   for (const [configId, value] of targets) {
     if (!value) continue;
     try {
-      const res = await ctx.request(methods.agent.session.setConfigOption, { sessionId, configId, value });
+      const res = await ctx.request(methods.agent.session.setConfigOption, {
+        sessionId,
+        configId,
+        value,
+      });
       dispatch({ kind: "setConfig", sessionId, configOptions: res.configOptions });
     } catch (err) {
       console.warn(`[claude-tauri] could not apply default ${configId}=${value}:`, err);
@@ -54,12 +60,19 @@ async function applyDefaults(
 
 /// Run one prompt turn in a session: open the assistant message, stream the
 /// reply, then close the turn even if the request rejects or is cancelled.
-async function runPromptTurn({ ctx, sessionId, text, seq, dispatch }: TurnDeps): Promise<void> {
-  dispatch({ kind: "submit", sessionId, userId: `u${seq}`, assistantId: `a${seq}`, text });
+async function runPromptTurn({
+  ctx,
+  sessionId,
+  text,
+  images,
+  seq,
+  dispatch,
+}: TurnDeps): Promise<void> {
+  dispatch({ kind: "submit", sessionId, userId: `u${seq}`, assistantId: `a${seq}`, text, images });
   try {
     await ctx.request(methods.agent.session.prompt, {
       sessionId,
-      prompt: [{ type: "text", text }],
+      prompt: contentBlocksForPrompt(text, images),
     });
   } finally {
     dispatch({ kind: "end", sessionId });
@@ -109,17 +122,20 @@ export function useSessionActions(
   const switchSession = useCallback((id: string) => dispatch({ kind: "activate", id }), [dispatch]);
 
   const sendPrompt = useCallback(
-    async (text: string) => {
-      if (text.trim().length === 0) return;
+    async (text: string, images: PromptImage[] = []) => {
+      if (text.trim().length === 0 && images.length === 0) return;
       await withActive((ctx, sessionId) =>
-        runPromptTurn({ ctx, sessionId, text, seq: turnSeq.current++, dispatch }),
+        runPromptTurn({ ctx, sessionId, text, images, seq: turnSeq.current++, dispatch }),
       );
     },
     [withActive, dispatch],
   );
 
   const cancel = useCallback(
-    () => Promise.resolve(withActive((ctx, id) => ctx.notify(methods.agent.session.cancel, { sessionId: id }))),
+    () =>
+      Promise.resolve(
+        withActive((ctx, id) => ctx.notify(methods.agent.session.cancel, { sessionId: id })),
+      ),
     [withActive],
   );
 

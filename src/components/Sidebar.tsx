@@ -13,21 +13,45 @@ interface SidebarProps {
 /// The session list: one entry per open session (title + directory, active
 /// highlighted, a dot while its turn is streaming) plus New-session, History,
 /// and Settings.
-export function Sidebar({ sessions, activeId, onSelect, onNew, onHistory, onSettings, disabled }: SidebarProps) {
+export function Sidebar({
+  sessions,
+  activeId,
+  onSelect,
+  onNew,
+  onHistory,
+  onSettings,
+  disabled,
+}: SidebarProps) {
   return (
     <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="brand-mark">C</div>
+        <div>
+          <div className="brand-name">Claude Workspace</div>
+          <div className="brand-subtitle">Local ACP client</div>
+        </div>
+      </div>
       <div className="sidebar-actions">
         <button className="new-session" onClick={onNew} disabled={disabled}>
           + New session
         </button>
-        <button className="history-button" onClick={onHistory} disabled={disabled} title="Session history">
+        <button
+          className="history-button"
+          onClick={onHistory}
+          disabled={disabled}
+          title="Session history"
+        >
           History
         </button>
         <button className="settings-button" onClick={onSettings} title="Settings">
           Settings
         </button>
       </div>
+      <div className="sidebar-section-label">Open sessions</div>
       <ul className="session-list">
+        {sessions.length === 0 && (
+          <li className="session-list-empty">Your active projects will appear here.</li>
+        )}
         {sessions.map((session) => (
           <li
             key={session.id}

@@ -26,7 +26,10 @@ export function Header({ status, agentInfo, usage, configOptions, onSetConfig }:
   const agentLabel = agentInfo ? `${agentInfo.name} v${agentInfo.version}` : undefined;
   return (
     <header className="app-header">
-      <div className="title">Claude Tauri</div>
+      <div className="header-title-group">
+        <div className="title">Workspace</div>
+        <div className="header-subtitle">Your local Claude sessions</div>
+      </div>
       <div className="header-right">
         {selectConfigs(configOptions).map((config) => (
           <select

@@ -9,6 +9,7 @@ import {
   transcriptReducer,
   type TranscriptState,
 } from "./transcript";
+import type { PromptImage } from "./attachments";
 
 const textChunk = (text: string): SessionUpdate => ({
   sessionUpdate: "agent_message_chunk",
@@ -30,6 +31,27 @@ describe("transcriptReducer", () => {
     expect(state.messages).toEqual([
       { id: "u1", role: "user", parts: [{ type: "text", text: "say hi" }], streaming: false },
       { id: "a1", role: "assistant", parts: [], streaming: true },
+    ]);
+  });
+
+  it("keeps submitted image attachments in the user message", () => {
+    const image: PromptImage = {
+      id: "image-1",
+      name: "screen.png",
+      mimeType: "image/png",
+      data: "AAAA",
+      size: 3,
+    };
+    const state = transcriptReducer(emptyTranscript, {
+      kind: "submit",
+      userId: "u1",
+      assistantId: "a1",
+      text: "What is wrong here?",
+      images: [image],
+    });
+    expect(state.messages[0].parts).toEqual([
+      { type: "text", text: "What is wrong here?" },
+      { type: "image", image },
     ]);
   });
 
@@ -80,12 +102,20 @@ describe("transcriptReducer", () => {
     let state = submit(emptyTranscript, "first");
     state = transcriptReducer(state, { kind: "update", update: textChunk("one") });
     state = transcriptReducer(state, { kind: "end" });
-    state = transcriptReducer(state, { kind: "submit", userId: "u2", assistantId: "a2", text: "second" });
+    state = transcriptReducer(state, {
+      kind: "submit",
+      userId: "u2",
+      assistantId: "a2",
+      text: "second",
+    });
     expect(state.messages.map((m) => messageText(m))).toEqual(["first", "one", "second", ""]);
   });
 
   it("defensively opens an assistant message if a chunk arrives with none open", () => {
-    const state = transcriptReducer(emptyTranscript, { kind: "update", update: textChunk("orphan") });
+    const state = transcriptReducer(emptyTranscript, {
+      kind: "update",
+      update: textChunk("orphan"),
+    });
     expect(state.messages).toHaveLength(1);
     expect(state.messages[0]).toMatchObject({ role: "assistant", streaming: true });
     expect(messageText(state.messages[0])).toBe("orphan");
@@ -110,7 +140,12 @@ describe("transcriptReducer", () => {
     state = transcriptReducer(state, { kind: "update", update: toolCall() });
     const calls = toolCalls(state.messages[1]);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ id: "t1", title: "Edit file.ts", kind: "edit", status: "pending" });
+    expect(calls[0]).toMatchObject({
+      id: "t1",
+      title: "Edit file.ts",
+      kind: "edit",
+      status: "pending",
+    });
   });
 
   it("merges tool_call_update fields by id without dropping unset ones", () => {
