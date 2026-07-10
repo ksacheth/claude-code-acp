@@ -780,9 +780,6 @@ html[data-theme="dark"] .app-header,
 html[data-theme="dark"] .composer {
   border-color: #333;
 }
-html[data-theme="dark"] .message .text {
-  background: #2c2c2e;
-}
 html[data-theme="dark"] .composer input {
   background: #2c2c2e;
   border-color: #444;
@@ -1570,19 +1567,15 @@ html[data-theme="dark"] .session-item.active {
   border-color: #574239;
 }
 
-html[data-theme="dark"] .message .text,
-html[data-theme="dark"] .message-assistant .text,
+/* Message backgrounds come from the var-driven base rules and the Claude.ai
+   layout below; the dark theme only flips the tokens, so it must not re-assert
+   a surface here or it would beat the "no bubble" assistant styling. */
 html[data-theme="dark"] .composer-box,
 html[data-theme="dark"] .command-palette,
 html[data-theme="dark"] .modal {
   border-color: var(--border);
   background: var(--surface);
   color: var(--text);
-}
-
-html[data-theme="dark"] .message-user .text {
-  border-color: var(--accent);
-  background: #b85c3e;
 }
 
 html[data-theme="dark"] .thought {
