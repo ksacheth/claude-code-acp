@@ -1,3 +1,11 @@
+/* The message bubble uses `white-space: pre-wrap` to preserve user newlines,
+   but react-markdown emits whitespace text nodes between block elements — under
+   pre-wrap those source newlines render as visible blank lines. Rendered
+   markdown owns its own block spacing, so reset to normal here. */
+.markdown {
+  white-space: normal;
+}
+
 .markdown > *:first-child {
   margin-top: 0;
 }
