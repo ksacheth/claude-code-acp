@@ -1,0 +1,64 @@
+# Claude Tauri
+
+A desktop client for Claude, built as a native shell (Tauri) around
+[`claude-agent-acp`](https://github.com/ksacheth/claude-agent-acp) — the same
+engine Zed and other [ACP](https://agentclientprotocol.com) clients use. It
+shows everything the agent emits (thinking, tool calls, plans, token usage)
+instead of hiding it, and stays fast because there's no browser in the loop.
+
+See [`SPEC.md`](SPEC.md) for the full feature set and design rationale.
+
+## Features
+
+- Full transparency: thinking blocks, tool calls with diffs, plans, and live
+  token/cost usage, all streamed as they happen
+- Permission prompts and session modes (default / plan / accept-edits / bypass)
+- Multiple concurrent sessions across projects, with resume/history across
+  restarts
+- Model, effort, and slash-command support; per-session MCP servers
+- Light / dark / auto theme
+
+## Install
+
+Download the installer for your platform from the
+[Releases page](https://github.com/ksacheth/claude-code-acp/releases):
+
+| Platform | File |
+| --- | --- |
+| macOS (Apple Silicon) | `Claude.Tauri_*_aarch64.dmg` |
+| macOS (Intel) | `Claude.Tauri_*_x64.dmg` |
+| Windows | `Claude.Tauri_*_x64-setup.exe` or `.msi` |
+| Linux | `.deb`, `.AppImage`, or `.rpm` |
+
+Installers are unsigned, so expect a Gatekeeper (macOS) or SmartScreen
+(Windows) warning on first launch — right-click → Open, or "More info" → "Run
+anyway".
+
+Windows and Linux builds are CI-verified only; if you hit a runtime issue on
+either, please open an issue.
+
+### Connect it to an engine
+
+The app is a shell — it doesn't bundle the agent. On first launch it needs to
+find a built `claude-agent-acp`:
+
+1. Clone and build the engine:
+   ```bash
+   git clone https://github.com/ksacheth/claude-agent-acp.git
+   cd claude-agent-acp && npm install && npm run build
+   ```
+2. In the app's Settings, set **Engine path** to that repo's
+   `dist/index.js` (or set the `CLAUDE_TAURI_ENGINE` environment variable
+   before launching).
+
+It also needs Node on your `PATH` (or set **Node path** in Settings), and
+rides on your existing Claude Code login — no separate sign-in.
+
+## Development
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for local setup, tests, and the PR
+checklist.
+
+## License
+
+[MIT](LICENSE)
