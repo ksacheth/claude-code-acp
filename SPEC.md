@@ -1,10 +1,10 @@
-# SPEC — Claude Tauri (personal Claude Desktop replacement)
+# SPEC — Claude Tauri (Claude Desktop replacement)
 
-Status: draft for approval · Owner: sacheth · Last updated: 2026-07-09
+Status: v0.1.0 shipped (M0–M6 complete) · Owner: sacheth · Last updated: 2026-07-10
 
 ## 1. Objective
 
-A personal macOS desktop app that replaces Claude Desktop as the daily driver,
+A cross-platform desktop app that replaces Claude Desktop as the daily driver,
 using `claude-agent-acp` (this repo) as the engine over the Agent Client
 Protocol (ACP).
 
@@ -18,13 +18,16 @@ Protocol (ACP).
 3. **Control** — both layers are owned here. If the UI needs something the
    agent doesn't expose, the agent gets patched (`src/`), not worked around.
 
-**Target user:** exactly one — the author. No polish tax, no onboarding, no
-multi-user concerns. macOS only.
+**Primary user:** the author, who drives scope and priority — "does the author
+need this" outweighs general-purpose polish when the two conflict. The repo is
+public and MIT-licensed, though: it builds and ships for macOS, Windows, and
+Linux (see §9), and forks/PRs are welcome (`CONTRIBUTING.md`).
 
 **Non-goals**
 
-- Windows/Linux support, distribution, code signing for others, auto-update
-  infrastructure beyond what Tauri gives for free.
+- Code signing / notarization for other users' machines — installers are
+  unsigned, so Gatekeeper/SmartScreen warnings on first launch are expected.
+- Auto-update infrastructure beyond what Tauri gives for free.
 - Replacing the terminal Claude Code CLI.
 - Building a new agent — the engine is `claude-agent-acp`, patched as needed.
 
@@ -146,7 +149,8 @@ Engine (repo root):
 App (`claude-tauri/`):
 
 - `npm run tauri dev` — run the app with hot reload
-- `npm run tauri build` — produce the macOS .app bundle
+- `npm run tauri build` — produce this platform's installer (.app/.dmg,
+  .msi/.exe, or .deb/.AppImage/.rpm)
 - `npm test` — frontend unit tests (vitest)
 - `cargo test` (in `src-tauri/`) — Rust-side tests
 
@@ -169,8 +173,8 @@ App (`claude-tauri/`):
   option rendering).
 - **Rust:** unit tests for process lifecycle (spawn, kill, orphan cleanup).
 - **End-to-end:** each milestone's acceptance criteria are verified manually
-  against the real agent before the milestone is called done (personal tool —
-  no e2e automation tax unless regressions bite twice).
+  against the real agent before the milestone is called done — no e2e
+  automation tax unless regressions bite twice.
 - Code Health safeguard runs on non-trivial changes before commits.
 
 ## 8. Boundaries
@@ -192,3 +196,14 @@ App (`claude-tauri/`):
 - Break the engine's ACP compatibility (it must keep working in Zed).
 - Commit credentials, tokens, or session transcripts.
 - Rewrite/refactor engine code unrelated to what the app needs.
+
+## 9. Distribution
+
+- `.github/workflows/release.yml` builds macOS (arm64 + Intel), Windows, and
+  Linux installers via `tauri-apps/tauri-action` and attaches them to a draft
+  GitHub Release. Trigger by pushing a `vX.Y.Z` tag, or manually via
+  `workflow_dispatch`.
+- Releases are drafts by default — review and publish manually.
+- Windows and Linux are build-verified by CI only; the engine spawn and
+  runtime behavior on those platforms has not been exercised end-to-end.
+  Treat non-macOS installers as unverified until someone runs one.
