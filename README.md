@@ -30,9 +30,15 @@ Download the installer for your platform from the
 | Windows | `Claude.Tauri_*_x64-setup.exe` or `.msi` |
 | Linux | `.deb`, `.AppImage`, or `.rpm` |
 
-Installers are unsigned, so expect a Gatekeeper (macOS) or SmartScreen
-(Windows) warning on first launch — right-click → Open, or "More info" → "Run
-anyway".
+Installers are unsigned. On Windows, expect a SmartScreen warning — "More
+info" → "Run anyway". On macOS, expect a stronger **"is damaged and can't be
+opened"** dialog (this is Gatekeeper's response to an un-notarized app, not an
+actual corrupt download) — right-click → Open won't clear it; instead, after
+moving the app to `/Applications`, run:
+
+```bash
+xattr -cr "/Applications/Claude Tauri.app"
+```
 
 Windows and Linux builds are CI-verified only; if you hit a runtime issue on
 either, please open an issue.
