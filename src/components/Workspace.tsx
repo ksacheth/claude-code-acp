@@ -40,7 +40,7 @@ export function Workspace({
 
   return (
     <>
-      <TranscriptView messages={active.transcript.messages} />
+      <TranscriptView sessionId={active.id} messages={active.transcript.messages} />
       {active.plan && <PlanChecklist entries={active.plan} />}
       <Composer
         cwd={active.cwd}

@@ -1,12 +1,44 @@
+import { useLayoutEffect, useRef } from "react";
+
 import { Markdown } from "./Markdown";
 import { ToolCall } from "./ToolCall";
 import type { Message, MessagePart } from "../session/transcript";
 import { imageDataUrl } from "../session/attachments";
+import { isNearBottom } from "../session/scroll";
 
-/// The scrolling message list for the active session.
-export function TranscriptView({ messages }: { messages: Message[] }) {
+interface TranscriptViewProps {
+  /// Identifies the open session, so switching sessions snaps to its bottom
+  /// even if the user had scrolled up in the previous one.
+  sessionId: string;
+  messages: Message[];
+}
+
+/// The scrolling message list for the active session. Auto-scrolls to follow
+/// new streamed content, but only while the user is at (or near) the bottom —
+/// scrolling up to reread earlier content pauses it until they scroll back
+/// down, so streaming never yanks the view out from under them.
+export function TranscriptView({ sessionId, messages }: TranscriptViewProps) {
+  const containerRef = useRef<HTMLElement>(null);
+  const stickToBottomRef = useRef(true);
+  const lastSessionIdRef = useRef(sessionId);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const switchedSession = lastSessionIdRef.current !== sessionId;
+    lastSessionIdRef.current = sessionId;
+    if (switchedSession) stickToBottomRef.current = true;
+    if (stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, [sessionId, messages]);
+
   return (
-    <section className="transcript">
+    <section
+      className="transcript"
+      ref={containerRef}
+      onScroll={(e) => {
+        stickToBottomRef.current = isNearBottom(e.currentTarget);
+      }}
+    >
       {messages.map((m) => (
         <MessageView key={m.id} message={m} />
       ))}
