@@ -1628,3 +1628,82 @@ button.cancel {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===========================================================================
+   Claude.ai-style conversation. Appended last so it settles the cascade over
+   both the light rules and the dark @media block above. The speaker is shown
+   by placement, not labels: assistant turns read as plain prose on the canvas
+   (no card), user turns as a compact neutral pill on the right.
+   =========================================================================== */
+
+/* Drop the USER / ASSISTANT labels. */
+.message .role {
+  display: none;
+}
+
+/* Assistant: plain prose, no bubble. */
+.message-assistant .text {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* User: a compact neutral pill that hugs its text, right-aligned. */
+.message-user {
+  max-width: 82%;
+}
+
+.message-user .text {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  padding: 0.5em 0.85em;
+  border: none;
+  border-radius: 16px;
+  border-bottom-right-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* Narrow the reading column toward Claude.ai's measure. */
+.transcript {
+  padding-inline: max(1.25em, calc((100% - 46em) / 2));
+}
+
+.composer {
+  padding-inline: max(1.25em, calc((100% - 46em) / 2));
+}
+
+/* Streaming indicator: a soft rust sunburst rather than a blinking bar. */
+.caret {
+  width: auto;
+  height: auto;
+  margin-left: 0.15em;
+  background: none;
+  opacity: 1;
+  animation: none;
+}
+
+.caret::after {
+  content: "✳";
+  display: inline-block;
+  color: var(--accent);
+  font-size: 1.05em;
+  line-height: 1;
+  animation: sunburst-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes sunburst-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
