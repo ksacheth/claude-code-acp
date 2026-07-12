@@ -42,14 +42,101 @@
   margin: 0.6em 0;
   padding: 0.75em 0.9em;
   overflow-x: auto;
-  background: rgba(127, 127, 127, 0.12);
+  color: var(--text);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
 .markdown pre code {
   background: none;
+  color: inherit;
   padding: 0;
   font-size: 0.85em;
+}
+
+/* highlight.js ships its light GitHub palette globally. Without explicit
+   overrides, its near-black base and token colors are unreadable inside the
+   dark app surface. Keep the light palette intact, then apply the matching
+   high-contrast palette only when the app is dark. */
+html[data-theme="dark"] .markdown pre {
+  background: #2b2724;
+  border-color: #453e38;
+}
+
+html[data-theme="dark"] .markdown .hljs {
+  color: #eee9e4;
+  background: transparent;
+}
+
+html[data-theme="dark"] .markdown .hljs-doctag,
+html[data-theme="dark"] .markdown .hljs-keyword,
+html[data-theme="dark"] .markdown .hljs-meta .hljs-keyword,
+html[data-theme="dark"] .markdown .hljs-template-tag,
+html[data-theme="dark"] .markdown .hljs-template-variable,
+html[data-theme="dark"] .markdown .hljs-type,
+html[data-theme="dark"] .markdown .hljs-variable.language_ {
+  color: #ff9d92;
+}
+
+html[data-theme="dark"] .markdown .hljs-title,
+html[data-theme="dark"] .markdown .hljs-title.class_,
+html[data-theme="dark"] .markdown .hljs-title.class_.inherited__,
+html[data-theme="dark"] .markdown .hljs-title.function_ {
+  color: #deb3ff;
+}
+
+html[data-theme="dark"] .markdown .hljs-attr,
+html[data-theme="dark"] .markdown .hljs-attribute,
+html[data-theme="dark"] .markdown .hljs-literal,
+html[data-theme="dark"] .markdown .hljs-meta,
+html[data-theme="dark"] .markdown .hljs-number,
+html[data-theme="dark"] .markdown .hljs-operator,
+html[data-theme="dark"] .markdown .hljs-variable,
+html[data-theme="dark"] .markdown .hljs-selector-attr,
+html[data-theme="dark"] .markdown .hljs-selector-class,
+html[data-theme="dark"] .markdown .hljs-selector-id {
+  color: #94cbff;
+}
+
+html[data-theme="dark"] .markdown .hljs-regexp,
+html[data-theme="dark"] .markdown .hljs-string,
+html[data-theme="dark"] .markdown .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+
+html[data-theme="dark"] .markdown .hljs-built_in,
+html[data-theme="dark"] .markdown .hljs-symbol {
+  color: #ffbd82;
+}
+
+html[data-theme="dark"] .markdown .hljs-comment,
+html[data-theme="dark"] .markdown .hljs-code,
+html[data-theme="dark"] .markdown .hljs-formula {
+  color: #b8ada5;
+}
+
+html[data-theme="dark"] .markdown .hljs-name,
+html[data-theme="dark"] .markdown .hljs-quote,
+html[data-theme="dark"] .markdown .hljs-selector-tag,
+html[data-theme="dark"] .markdown .hljs-selector-pseudo {
+  color: #91e7a8;
+}
+
+html[data-theme="dark"] .markdown .hljs-subst,
+html[data-theme="dark"] .markdown .hljs-emphasis,
+html[data-theme="dark"] .markdown .hljs-strong {
+  color: #eee9e4;
+}
+
+html[data-theme="dark"] .markdown .hljs-addition {
+  color: #aff5b4;
+  background-color: #174d28;
+}
+
+html[data-theme="dark"] .markdown .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #6e1a16;
 }
 
 .markdown table {
