@@ -114,9 +114,9 @@ agent remains a standard ACP agent usable by other clients).
   M0, expensive later). Markdown rendering with streaming support.
 - **Engine:** `claude-agent-acp` from this repo (`npm run build` → spawn
   `dist/index.js`), Node ≥ 22 required on the machine.
-- **Auth:** rides on the existing Claude Code login — the agent spawns the
-  Claude Agent SDK which uses stored credentials. No login flow in the app;
-  surface the agent's `authenticate`/auth-required errors when they occur.
+- **Auth:** the agent uses Claude Code's stored credentials. When credentials
+  are absent, the app launches the engine's supported browser-based
+  `auth login --claudeai` flow, then reconnects the agent.
 - **Protocol:** ACP via `@agentclientprotocol/sdk` types. Prefer standard ACP
   over private side-channels; if a private extension is unavoidable, isolate
   it and mark it clearly.

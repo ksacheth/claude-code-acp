@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { SessionInfo } from "@agentclientprotocol/sdk";
 
 import "./App.css";
+import { AuthBanner } from "./components/AuthBanner";
 import { DisconnectBanner } from "./components/DisconnectBanner";
 import { Header } from "./components/Header";
 import { HistoryBrowser } from "./components/HistoryBrowser";
@@ -11,6 +12,7 @@ import { Sidebar } from "./components/Sidebar";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { Workspace } from "./components/Workspace";
 import { useTheme } from "./session/theme";
+import { messageText } from "./session/transcript";
 import { useAgent } from "./useAgent";
 import { useUpdater } from "./useUpdater";
 
@@ -29,6 +31,11 @@ function App() {
     setHistoryOpen(true);
     void agent.listSessions().then(setHistoryList);
   };
+  const needsLogin =
+    active?.transcript.messages.some(
+      (message) =>
+        message.role === "assistant" && /not logged in|please run \/login/i.test(messageText(message)),
+    ) ?? false;
 
   return (
     <div className="app-shell">
@@ -54,6 +61,12 @@ function App() {
         {error && <pre className="error">{error}</pre>}
 
         <DisconnectBanner status={status} onReconnect={() => void agent.reconnect()} />
+        <AuthBanner
+          visible={needsLogin || agent.loggingIn || !!agent.loginError}
+          loggingIn={agent.loggingIn}
+          error={agent.loginError}
+          onLogin={() => void agent.login()}
+        />
 
         <Workspace
           active={active}
@@ -89,6 +102,9 @@ function App() {
           onCheckForUpdates={() => void updater.checkForUpdates()}
           checkingForUpdates={updater.checking}
           updateMessage={updater.message}
+          onLogin={() => void agent.login()}
+          loggingIn={agent.loggingIn}
+          loginError={agent.loginError}
         />
       )}
 

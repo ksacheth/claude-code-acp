@@ -1,5 +1,6 @@
 mod process;
 
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
@@ -93,6 +94,42 @@ fn default_engine_path() -> Option<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
+/// Run Claude's browser-based subscription login through the configured engine.
+/// The command returns after the browser flow completes and credentials have
+/// been written to Claude's normal credential store.
+#[tauri::command]
+async fn claude_login(
+    command: String,
+    args: Vec<String>,
+    env: Option<Vec<(String, String)>>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut login = Command::new(command);
+        login.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        for (key, value) in env.unwrap_or_default() {
+            login.env(key, value);
+        }
+
+        let output = login
+            .output()
+            .map_err(|error| format!("could not start Claude login: {error}"))?;
+        if output.status.success() {
+            return Ok(());
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        let detail = if !stderr.is_empty() { stderr } else { stdout };
+        Err(if detail.is_empty() {
+            format!("Claude login exited with status {}", output.status)
+        } else {
+            format!("Claude login failed: {detail}")
+        })
+    })
+    .await
+    .map_err(|error| format!("Claude login task failed: {error}"))?
+}
+
 /// Kill the agent when the app is tearing down so no `node` child is orphaned.
 fn stop_agent(app: &AppHandle) {
     if let Some(handle) = app.state::<AgentState>().0.lock().expect("agent state").take() {
@@ -111,7 +148,8 @@ pub fn run() {
             agent_start,
             agent_send,
             agent_stop,
-            default_engine_path
+            default_engine_path,
+            claude_login
         ])
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {

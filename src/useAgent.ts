@@ -14,6 +14,7 @@ import {
   type AgentConnectionHandle,
   type ConnectionStatus,
 } from "./acp/useAgentConnection";
+import { startClaudeLogin } from "./acp/tauriChannel";
 import { useSessionActions } from "./session/useSessionActions";
 import { useSessionHistory } from "./session/useSessionHistory";
 import { useSettings } from "./session/useSettings";
@@ -51,6 +52,10 @@ export interface AgentState {
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
+  /// Starts the browser-based Claude subscription login, then reconnects the agent.
+  login: () => Promise<void>;
+  loggingIn: boolean;
+  loginError?: string;
   /// Persisted app settings and a setter (used by the settings UI).
   settings: Settings;
   saveSettings: (next: Settings) => void;
@@ -67,6 +72,8 @@ export function useAgent(): AgentState {
   settingsRef.current = settings;
   const [sessions, dispatch] = useReducer(sessionsReducer, emptySessions);
   const [permission, setPermission] = useState<RequestPermissionRequest>();
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string>();
   // The pending resolver is held in a ref so resolving is a plain side effect.
   const resolverRef = useRef<((response: RequestPermissionResponse) => void) | null>(null);
 
@@ -114,6 +121,20 @@ export function useAgent(): AgentState {
 
   const active = activeSession(sessions);
 
+  const login = useCallback(async () => {
+    if (loggingIn) return;
+    setLoggingIn(true);
+    setLoginError(undefined);
+    try {
+      await startClaudeLogin(settingsRef.current);
+      await connection.reconnect();
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoggingIn(false);
+    }
+  }, [connection, loggingIn, settingsRef]);
+
   return {
     status: connection.status,
     agentInfo: connection.agentInfo,
@@ -132,6 +153,9 @@ export function useAgent(): AgentState {
     resumeSession: history.resumeSession,
     resolvePermission,
     reconnect: connection.reconnect,
+    login,
+    loggingIn,
+    loginError,
     settings,
     saveSettings,
   };

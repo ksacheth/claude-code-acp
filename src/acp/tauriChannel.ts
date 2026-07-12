@@ -75,6 +75,18 @@ export async function startAgent(config: SpawnConfig = { env: [] }): Promise<voi
   });
 }
 
+/// Start Claude's browser-based login using the same Node, engine path, and
+/// environment that the app uses for its ACP agent.
+export async function startClaudeLogin(config: SpawnConfig): Promise<void> {
+  const enginePath = await resolveEnginePath(config.enginePath);
+  const env = config.env.map((entry) => [entry.name, entry.value] as [string, string]);
+  await invoke("claude_login", {
+    command: config.nodePath || "node",
+    args: [enginePath, "--cli", "auth", "login", "--claudeai"],
+    env,
+  });
+}
+
 /// Stop the engine subprocess.
 export function stopAgent(): Promise<void> {
   return invoke("agent_stop");

@@ -57,8 +57,9 @@ find a built `claude-agent-acp`:
    `dist/index.js` (or set the `CLAUDE_TAURI_ENGINE` environment variable
    before launching).
 
-It also needs Node on your `PATH` (or set **Node path** in Settings), and
-rides on your existing Claude Code login — no separate sign-in.
+It also needs Node on your `PATH` (or set **Node path** in Settings). If you
+are not already logged in, select **Log in with Claude** in the app; it opens
+the supported Claude browser sign-in and reconnects when complete.
 
 ### Updates
 
