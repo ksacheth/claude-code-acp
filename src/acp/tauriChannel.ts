@@ -87,6 +87,18 @@ export async function startClaudeLogin(config: SpawnConfig): Promise<void> {
   });
 }
 
+/// Ask the configured engine whether its Claude subscription credentials are
+/// usable. This is a status check only; it never reads or returns credentials.
+export async function getClaudeAuthStatus(config: SpawnConfig): Promise<boolean> {
+  const enginePath = await resolveEnginePath(config.enginePath);
+  const env = config.env.map((entry) => [entry.name, entry.value] as [string, string]);
+  return invoke<boolean>("claude_auth_status", {
+    command: config.nodePath || "node",
+    args: [enginePath, "--cli", "auth", "status"],
+    env,
+  });
+}
+
 /// Stop the engine subprocess.
 export function stopAgent(): Promise<void> {
   return invoke("agent_stop");

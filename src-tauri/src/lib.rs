@@ -3,6 +3,7 @@ mod process;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
+use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use process::{spawn_agent, AgentHandle};
@@ -130,6 +131,54 @@ async fn claude_login(
     .map_err(|error| format!("Claude login task failed: {error}"))?
 }
 
+/// The subset of the engine's JSON `auth status` response that the settings UI
+/// needs. The CLI does not expose an email address, so this reports the
+/// verified sign-in state without reading credential files.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClaudeAuthStatus {
+    logged_in: bool,
+}
+
+/// Check whether the configured engine can currently use Claude credentials.
+/// It follows the same Node, engine-path, and environment configuration as
+/// `claude_login`, avoiding a result from a different shell environment.
+#[tauri::command]
+async fn claude_auth_status(
+    command: String,
+    args: Vec<String>,
+    env: Option<Vec<(String, String)>>,
+) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut status = Command::new(command);
+        status.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        for (key, value) in env.unwrap_or_default() {
+            status.env(key, value);
+        }
+
+        let output = status
+            .output()
+            .map_err(|error| format!("could not check Claude sign-in: {error}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            let detail = if !stderr.is_empty() { stderr } else { stdout };
+            return Err(if detail.is_empty() {
+                format!("Claude sign-in check exited with status {}", output.status)
+            } else {
+                format!("Claude sign-in check failed: {detail}")
+            });
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let auth: ClaudeAuthStatus = serde_json::from_str(&stdout)
+            .map_err(|error| format!("could not read Claude sign-in status: {error}"))?;
+        Ok(auth.logged_in)
+    })
+    .await
+    .map_err(|error| format!("Claude sign-in check task failed: {error}"))?
+}
+
 /// Kill the agent when the app is tearing down so no `node` child is orphaned.
 fn stop_agent(app: &AppHandle) {
     if let Some(handle) = app.state::<AgentState>().0.lock().expect("agent state").take() {
@@ -149,7 +198,8 @@ pub fn run() {
             agent_send,
             agent_stop,
             default_engine_path,
-            claude_login
+            claude_login,
+            claude_auth_status
         ])
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed) {

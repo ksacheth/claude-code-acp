@@ -8,6 +8,7 @@ interface HistoryBrowserProps {
   sessions: SessionInfo[] | null;
   nowMs: number;
   onResume: (info: SessionInfo) => void;
+  onDelete: (info: SessionInfo) => void;
   onClose: () => void;
 }
 
@@ -17,7 +18,7 @@ export function sortByRecency(sessions: SessionInfo[]): SessionInfo[] {
 }
 
 /// A modal listing persisted sessions; clicking one resumes it.
-export function HistoryBrowser({ sessions, nowMs, onResume, onClose }: HistoryBrowserProps) {
+export function HistoryBrowser({ sessions, nowMs, onResume, onDelete, onClose }: HistoryBrowserProps) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal history-modal" onClick={(e) => e.stopPropagation()}>
@@ -29,16 +30,26 @@ export function HistoryBrowser({ sessions, nowMs, onResume, onClose }: HistoryBr
         ) : (
           <ul className="history-list">
             {sortByRecency(sessions).map((session) => (
-              <li key={session.sessionId} className="history-item" onClick={() => onResume(session)}>
-                <div className="history-title">{session.title || titleFromCwd(session.cwd)}</div>
-                <div className="history-meta">
-                  <span className="history-cwd" title={session.cwd}>
-                    {session.cwd}
-                  </span>
-                  {session.updatedAt && (
-                    <span className="history-time">{formatRelativeTime(session.updatedAt, nowMs)}</span>
-                  )}
-                </div>
+              <li key={session.sessionId} className="history-item">
+                <button className="history-resume" type="button" onClick={() => onResume(session)}>
+                  <div className="history-title">{session.title || titleFromCwd(session.cwd)}</div>
+                  <div className="history-meta">
+                    <span className="history-cwd" title={session.cwd}>
+                      {session.cwd}
+                    </span>
+                    {session.updatedAt && (
+                      <span className="history-time">{formatRelativeTime(session.updatedAt, nowMs)}</span>
+                    )}
+                  </div>
+                </button>
+                <button
+                  className="history-delete"
+                  type="button"
+                  aria-label={`Delete ${session.title || titleFromCwd(session.cwd)}`}
+                  onClick={() => onDelete(session)}
+                >
+                  Delete
+                </button>
               </li>
             ))}
           </ul>

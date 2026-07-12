@@ -9,6 +9,8 @@ import { toMcpServers, type Settings } from "./settings";
 export interface SessionHistory {
   /// List persisted sessions across all directories.
   listSessions: () => Promise<SessionInfo[]>;
+  /// Permanently remove a persisted conversation and any matching open tab.
+  deleteSession: (info: SessionInfo) => Promise<void>;
   /// Resume a persisted session: its history replays into a rebuilt transcript.
   resumeSession: (info: SessionInfo) => Promise<void>;
   /// Re-open a saved set of sessions on launch (skipping any that fail to load)
@@ -96,6 +98,16 @@ export function useSessionHistory(
     [ctxRef, dispatch, openIds, settingsRef],
   );
 
+  const deleteSession = useCallback(
+    async (info: SessionInfo) => {
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      await ctx.request(methods.agent.session.delete, { sessionId: info.sessionId });
+      dispatch({ kind: "remove", id: info.sessionId });
+    },
+    [ctxRef, dispatch],
+  );
+
   const restoreSessions = useCallback(
     async (snapshot: OpenSessionsSnapshot) => {
       const ctx = ctxRef.current;
@@ -104,5 +116,5 @@ export function useSessionHistory(
     [ctxRef, dispatch, settingsRef],
   );
 
-  return { listSessions, resumeSession, restoreSessions };
+  return { listSessions, deleteSession, resumeSession, restoreSessions };
 }

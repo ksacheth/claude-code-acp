@@ -20,31 +20,32 @@ describe("sortByRecency", () => {
 describe("HistoryBrowser", () => {
   it("shows a loading state while sessions are null", () => {
     const html = renderToStaticMarkup(
-      <HistoryBrowser sessions={null} nowMs={now} onResume={() => {}} onClose={() => {}} />,
+      <HistoryBrowser sessions={null} nowMs={now} onResume={() => {}} onDelete={() => {}} onClose={() => {}} />,
     );
     expect(html).toContain("Loading");
   });
 
   it("shows an empty state when there are no sessions", () => {
     const html = renderToStaticMarkup(
-      <HistoryBrowser sessions={[]} nowMs={now} onResume={() => {}} onClose={() => {}} />,
+      <HistoryBrowser sessions={[]} nowMs={now} onResume={() => {}} onDelete={() => {}} onClose={() => {}} />,
     );
     expect(html).toContain("No past sessions");
   });
 
   it("lists sessions with title, directory, and relative time", () => {
     const html = renderToStaticMarkup(
-      <HistoryBrowser sessions={sessions} nowMs={now} onResume={() => {}} onClose={() => {}} />,
+      <HistoryBrowser sessions={sessions} nowMs={now} onResume={() => {}} onDelete={() => {}} onClose={() => {}} />,
     );
     expect(html).toContain("Newer work");
     expect(html).toContain("/repo/old");
     expect(html).toContain("1h ago");
+    expect(html).toContain("Delete");
   });
 
   it("falls back to the cwd basename when a session has no title", () => {
     const untitled: SessionInfo[] = [{ sessionId: "x", cwd: "/repo/widget", updatedAt: null }];
     const html = renderToStaticMarkup(
-      <HistoryBrowser sessions={untitled} nowMs={now} onResume={() => {}} onClose={() => {}} />,
+      <HistoryBrowser sessions={untitled} nowMs={now} onResume={() => {}} onDelete={() => {}} onClose={() => {}} />,
     );
     expect(html).toContain("widget");
   });

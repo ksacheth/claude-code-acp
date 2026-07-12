@@ -90,6 +90,11 @@ function App() {
             void agent.resumeSession(info);
             setHistoryOpen(false);
           }}
+          onDelete={(info) => {
+            void agent.deleteSession(info).then(() => {
+              setHistoryList((sessions) => sessions?.filter((session) => session.sessionId !== info.sessionId) ?? null);
+            });
+          }}
           onClose={() => setHistoryOpen(false)}
         />
       )}
@@ -105,6 +110,7 @@ function App() {
           onLogin={() => void agent.login()}
           loggingIn={agent.loggingIn}
           loginError={agent.loginError}
+          loggedIn={agent.loggedIn}
         />
       )}
 

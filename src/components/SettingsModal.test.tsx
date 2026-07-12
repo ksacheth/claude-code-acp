@@ -35,4 +35,12 @@ describe("SettingsModal", () => {
     expect(html).toContain("Settings");
     expect(html).not.toContain("mcp-row");
   });
+
+  it("shows the verified Claude account state", () => {
+    const html = renderToStaticMarkup(
+      <SettingsModal settings={settings} onSave={() => {}} onClose={() => {}} onLogin={() => {}} loggedIn />,
+    );
+    expect(html).toContain("Signed in with your Claude subscription");
+    expect(html).toContain("Log in again");
+  });
 });

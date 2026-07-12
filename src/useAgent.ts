@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { useOpenSessionsPersistence } from "./session/useOpenSessionsPersistence";
 import type {
@@ -14,7 +14,7 @@ import {
   type AgentConnectionHandle,
   type ConnectionStatus,
 } from "./acp/useAgentConnection";
-import { startClaudeLogin } from "./acp/tauriChannel";
+import { getClaudeAuthStatus, startClaudeLogin } from "./acp/tauriChannel";
 import { useSessionActions } from "./session/useSessionActions";
 import { useSessionHistory } from "./session/useSessionHistory";
 import { useSettings } from "./session/useSettings";
@@ -49,6 +49,7 @@ export interface AgentState {
   cancel: () => Promise<void>;
   setConfig: (configId: string, value: string) => Promise<void>;
   listSessions: () => Promise<SessionInfo[]>;
+  deleteSession: (info: SessionInfo) => Promise<void>;
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
   reconnect: () => Promise<void>;
@@ -56,6 +57,8 @@ export interface AgentState {
   login: () => Promise<void>;
   loggingIn: boolean;
   loginError?: string;
+  /// Whether the configured engine has verified Claude subscription credentials.
+  loggedIn?: boolean;
   /// Persisted app settings and a setter (used by the settings UI).
   settings: Settings;
   saveSettings: (next: Settings) => void;
@@ -74,6 +77,7 @@ export function useAgent(): AgentState {
   const [permission, setPermission] = useState<RequestPermissionRequest>();
   const [loggingIn, setLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string>();
+  const [loggedIn, setLoggedIn] = useState<boolean>();
   // The pending resolver is held in a ref so resolving is a plain side effect.
   const resolverRef = useRef<((response: RequestPermissionResponse) => void) | null>(null);
 
@@ -121,12 +125,31 @@ export function useAgent(): AgentState {
 
   const active = activeSession(sessions);
 
+  const refreshAuthStatus = useCallback(async () => {
+    try {
+      setLoggedIn(await getClaudeAuthStatus(settingsRef.current));
+    } catch {
+      // Engine setup errors are shown by the connection; Settings can retain
+      // its neutral sign-in prompt until a status check succeeds.
+      setLoggedIn(undefined);
+    }
+  }, [settingsRef]);
+
+  useEffect(() => {
+    void refreshAuthStatus();
+  }, [refreshAuthStatus]);
+
   const login = useCallback(async () => {
     if (loggingIn) return;
     setLoggingIn(true);
     setLoginError(undefined);
     try {
       await startClaudeLogin(settingsRef.current);
+      const signedIn = await getClaudeAuthStatus(settingsRef.current);
+      setLoggedIn(signedIn);
+      if (!signedIn) {
+        throw new Error("Claude sign-in did not complete. Finish it in your browser, then try again.");
+      }
       await connection.reconnect();
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : String(error));
@@ -150,12 +173,14 @@ export function useAgent(): AgentState {
     cancel: actions.cancel,
     setConfig: actions.setConfig,
     listSessions: history.listSessions,
+    deleteSession: history.deleteSession,
     resumeSession: history.resumeSession,
     resolvePermission,
     reconnect: connection.reconnect,
     login,
     loggingIn,
     loginError,
+    loggedIn,
     settings,
     saveSettings,
   };

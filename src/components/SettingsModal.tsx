@@ -20,6 +20,7 @@ interface SettingsModalProps {
   onLogin?: () => void;
   loggingIn?: boolean;
   loginError?: string;
+  loggedIn?: boolean;
 }
 
 /// The settings modal: engine spawn (node path, engine path, env), per-session
@@ -35,6 +36,7 @@ export function SettingsModal({
   onLogin,
   loggingIn = false,
   loginError,
+  loggedIn,
 }: SettingsModalProps) {
   const [form, setForm] = useState<SettingsForm>(() => settingsToForm(settings));
   const set = (patch: Partial<SettingsForm>) => setForm((f) => ({ ...f, ...patch }));
@@ -71,10 +73,14 @@ export function SettingsModal({
 
         <section className="settings-section">
           <h3>Claude account</h3>
-          <p className="muted">Sign in with your Claude subscription in your browser.</p>
+          {loggedIn ? (
+            <p className="account-status">Signed in with your Claude subscription.</p>
+          ) : (
+            <p className="muted">Sign in with your Claude subscription in your browser.</p>
+          )}
           {onLogin && (
             <button type="button" onClick={onLogin} disabled={loggingIn}>
-              {loggingIn ? "Waiting for sign-in…" : "Log in with Claude"}
+              {loggingIn ? "Waiting for sign-in…" : loggedIn ? "Log in again" : "Log in with Claude"}
             </button>
           )}
           {loginError && <p className="update-status">{loginError}</p>}

@@ -172,13 +172,42 @@ html[data-theme="dark"] .settings-modal textarea {
 }
 
 .history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
   padding: 0.5em 0.6em;
   border-radius: 8px;
-  cursor: pointer;
 }
 
 .history-item:hover {
   background: rgba(37, 99, 235, 0.12);
+}
+
+.history-resume {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-delete {
+  flex: none;
+  padding: 0.35em 0.55em;
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  border-radius: 6px;
+  background: transparent;
+  color: #dc2626;
+  font: inherit;
+  font-size: 0.78em;
+  cursor: pointer;
+}
+
+.history-delete:hover {
+  background: rgba(220, 38, 38, 0.12);
 }
 
 .history-title {
