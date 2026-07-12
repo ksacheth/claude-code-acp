@@ -33,6 +33,10 @@ async function resumeInto(
     cwd: info.cwd,
     mcpServers: toMcpServers(settings.mcpServers),
   });
+  // The protocol replays chunks but does not emit a prompt response for that
+  // historical work. Close the final replayed assistant message once loading
+  // has finished so it is rendered as settled, not as a live response.
+  dispatch({ kind: "end", sessionId: info.sessionId });
   if (response.configOptions) {
     dispatch({ kind: "setConfig", sessionId: info.sessionId, configOptions: response.configOptions });
   }

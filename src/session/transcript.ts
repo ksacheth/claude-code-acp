@@ -108,9 +108,54 @@ function appendChunk(parts: MessagePart[], kind: "text" | "thought", chunk: stri
   ];
 }
 
+/// Replayed history includes user_message_chunk updates. A user message marks
+/// the end of the preceding assistant turn, so preserve it as a real transcript
+/// entry instead of letting every restored assistant reply run together.
+function applyUserChunk(
+  state: TranscriptState,
+  update: Extract<SessionUpdate, { sessionUpdate: "user_message_chunk" }>,
+): TranscriptState {
+  const part: MessagePart | undefined =
+    update.content.type === "text"
+      ? { type: "text", text: update.content.text }
+      : update.content.type === "image"
+        ? {
+            type: "image",
+            image: {
+              id: `user-image-${state.messages.length}-${update.content.data.slice(0, 12)}`,
+              name: "Attached image",
+              mimeType: update.content.mimeType,
+              data: update.content.data,
+              size: 0,
+            },
+          }
+        : undefined;
+  if (!part) return state;
+
+  const id = update.messageId ?? `user-${state.messages.length}`;
+  const last = state.messages[state.messages.length - 1];
+  if (last?.role === "user" && last.id === id) {
+    const parts = part.type === "text" ? appendChunk(last.parts, "text", part.text) : [...last.parts, part];
+    return { ...state, messages: [...state.messages.slice(0, -1), { ...last, parts }] };
+  }
+
+  return {
+    ...state,
+    messages: [
+      ...state.messages.map((message) =>
+        message.streaming ? { ...message, streaming: false } : message,
+      ),
+      { id, role: "user", parts: [part], streaming: false },
+    ],
+  };
+}
+
 /// Route a text/thought chunk into the open assistant message as an ordered
 /// part. Answer text and thinking stream the same way into different part kinds.
 function applyChunk(state: TranscriptState, update: SessionUpdate): TranscriptState {
+  if (update.sessionUpdate === "user_message_chunk") {
+    return applyUserChunk(state, update);
+  }
   const isMessage = update.sessionUpdate === "agent_message_chunk";
   const isThought = update.sessionUpdate === "agent_thought_chunk";
   if ((isMessage || isThought) && update.content.type === "text") {

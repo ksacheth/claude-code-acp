@@ -11,13 +11,30 @@ import {
 } from "./transcript";
 import type { PromptImage } from "./attachments";
 
-const textChunk = (text: string): SessionUpdate => ({
+const textChunk = (
+  text: string,
+  messageId?: string,
+): Extract<SessionUpdate, { sessionUpdate: "agent_message_chunk" }> => ({
   sessionUpdate: "agent_message_chunk",
+  ...(messageId ? { messageId } : {}),
   content: { type: "text", text },
 });
 
-const thoughtChunk = (text: string): SessionUpdate => ({
+const thoughtChunk = (
+  text: string,
+  messageId?: string,
+): Extract<SessionUpdate, { sessionUpdate: "agent_thought_chunk" }> => ({
   sessionUpdate: "agent_thought_chunk",
+  ...(messageId ? { messageId } : {}),
+  content: { type: "text", text },
+});
+
+const userChunk = (
+  messageId: string,
+  text: string,
+): Extract<SessionUpdate, { sessionUpdate: "user_message_chunk" }> => ({
+  sessionUpdate: "user_message_chunk",
+  messageId,
   content: { type: "text", text },
 });
 
@@ -109,6 +126,33 @@ describe("transcriptReducer", () => {
       text: "second",
     });
     expect(state.messages.map((m) => messageText(m))).toEqual(["first", "one", "second", ""]);
+  });
+
+  it("rebuilds separate turns from replayed user message chunks", () => {
+    let state = transcriptReducer(emptyTranscript, { kind: "update", update: userChunk("u1", "first") });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: textChunk("one", "a1"),
+    });
+    state = transcriptReducer(state, { kind: "update", update: userChunk("u2", "second") });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: thoughtChunk("thinking", "a2"),
+    });
+    state = transcriptReducer(state, {
+      kind: "update",
+      update: textChunk("two", "a2"),
+    });
+    state = transcriptReducer(state, { kind: "end" });
+
+    expect(state.messages.map((message) => [message.role, messageText(message)])).toEqual([
+      ["user", "first"],
+      ["assistant", "one"],
+      ["user", "second"],
+      ["assistant", "two"],
+    ]);
+    expect(messageThought(state.messages[3])).toBe("thinking");
+    expect(state.messages.every((message) => !message.streaming)).toBe(true);
   });
 
   it("defensively opens an assistant message if a chunk arrives with none open", () => {
