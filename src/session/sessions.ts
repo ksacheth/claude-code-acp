@@ -7,7 +7,7 @@ import type {
 
 import { patchCurrentValue, MODE_CONFIG_ID } from "./config";
 import { emptyTranscript, transcriptReducer, type TranscriptState } from "./transcript";
-import type { Usage } from "./usage";
+import { mergeRateLimit, rateLimitFromMeta, type Usage } from "./usage";
 import type { PromptImage } from "./attachments";
 
 /// All state for one session (bound to a project directory).
@@ -65,7 +65,21 @@ export function titleFromCwd(cwd: string): string {
 function applyUpdate(session: SessionState, update: SessionUpdate): SessionState {
   switch (update.sessionUpdate) {
     case "usage_update":
-      return { ...session, usage: { used: update.used, size: update.size, cost: update.cost } };
+      {
+        const rateLimit = rateLimitFromMeta(update._meta);
+        const rateLimits = rateLimit
+          ? mergeRateLimit(session.usage?.rateLimits, rateLimit)
+          : session.usage?.rateLimits;
+        return {
+          ...session,
+          usage: {
+            used: update.used,
+            size: update.size,
+            cost: update.cost !== undefined ? update.cost : session.usage?.cost,
+            ...(rateLimits ? { rateLimits } : {}),
+          },
+        };
+      }
     case "config_option_update":
       return { ...session, configOptions: update.configOptions ?? session.configOptions };
     case "current_mode_update":

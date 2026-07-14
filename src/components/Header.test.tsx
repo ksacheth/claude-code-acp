@@ -50,4 +50,20 @@ describe("Header", () => {
     const html = renderToStaticMarkup(<Header status="connected" onSetConfig={() => {}} />);
     expect(html).not.toContain("config-select");
   });
+
+  it("shows Claude subscription usage limits separately from context usage", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        status="connected"
+        usage={{
+          used: 12000,
+          size: 200000,
+          rateLimits: [{ status: "allowed", type: "five_hour", utilization: 42 }],
+        }}
+        onSetConfig={() => {}}
+      />,
+    );
+    expect(html).toContain("12.0k / 200k (6%)");
+    expect(html).toContain("5h limit: 42% used");
+  });
 });

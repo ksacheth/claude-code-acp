@@ -1106,6 +1106,18 @@ button:disabled {
   color: var(--success);
 }
 
+.usage-limit {
+  white-space: nowrap;
+}
+
+.usage-limit-allowed_warning {
+  color: #a66a00;
+}
+
+.usage-limit-rejected {
+  color: #bd3028;
+}
+
 .status {
   padding-left: 0.2em;
   color: var(--text-muted);

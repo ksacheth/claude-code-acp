@@ -104,6 +104,29 @@ describe("sessionsReducer", () => {
     expect(state.sessions.find((s) => s.id === "B")!.usage).toBeUndefined();
   });
 
+  it("keeps Claude subscription limits with the session usage", () => {
+    let state = sessionsReducer(emptySessions, { kind: "create", id: "A", cwd: "/repo/alpha" });
+    state = sessionsReducer(state, {
+      kind: "update",
+      sessionId: "A",
+      update: {
+        sessionUpdate: "usage_update",
+        used: 10,
+        size: 200,
+        _meta: {
+          "_claude/rateLimit": {
+            status: "allowed",
+            rateLimitType: "five_hour",
+            utilization: 25,
+          },
+        },
+      } as SessionUpdate,
+    });
+    expect(activeSession(state)?.usage?.rateLimits).toEqual([
+      { status: "allowed", type: "five_hour", utilization: 25 },
+    ]);
+  });
+
   it("removes a session and picks a remaining one as active", () => {
     const state = sessionsReducer(withTwoSessions(), { kind: "remove", id: "B" });
     expect(state.sessions.map((s) => s.id)).toEqual(["A"]);

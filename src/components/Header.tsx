@@ -1,7 +1,7 @@
 import type { SessionConfigOption } from "@agentclientprotocol/sdk";
 
 import { selectConfigs } from "../session/config";
-import { formatContext, formatCost, type Usage } from "../session/usage";
+import { formatContext, formatCost, formatRateLimit, type Usage } from "../session/usage";
 import type { ConnectionStatus } from "../useAgent";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -53,6 +53,15 @@ export function Header({ status, agentInfo, usage, configOptions, onSetConfig }:
             {cost && <span className="cost"> · {cost}</span>}
           </div>
         )}
+        {usage?.rateLimits?.map((limit) => (
+          <div
+            key={limit.type ?? "current"}
+            className={`usage usage-limit usage-limit-${limit.status}`}
+            title="Claude subscription usage limit"
+          >
+            {formatRateLimit(limit)}
+          </div>
+        ))}
         <div className={`status status-${status}`}>
           <span className="status-dot" />
           {status === "connected" && agentLabel ? agentLabel : STATUS_LABEL[status]}
