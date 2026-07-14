@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import type {
   ClientContext,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
   SessionNotification,
@@ -26,6 +28,7 @@ export interface AgentConnectionHandle {
 export interface ConnectionHandlers {
   onUpdate: (notification: SessionNotification) => void;
   onPermissionRequest: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>;
+  onElicitationRequest: (request: CreateElicitationRequest) => Promise<CreateElicitationResponse>;
   onReset: () => void;
 }
 
@@ -38,7 +41,7 @@ export function useAgentConnection(
   settingsRef: MutableRefObject<Settings>,
   handlers: ConnectionHandlers,
 ): AgentConnectionHandle {
-  const { onUpdate, onPermissionRequest, onReset } = handlers;
+  const { onUpdate, onPermissionRequest, onElicitationRequest, onReset } = handlers;
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [agentInfo, setAgentInfo] = useState<AgentConnection["agentInfo"]>();
   const [error, setError] = useState<string>();
@@ -55,6 +58,7 @@ export function useAgentConnection(
       const conn = await connectAgent(tauriChannel, {
         onSessionUpdate: onUpdate,
         onPermissionRequest,
+        onElicitationRequest,
       });
       if (disposedRef.current) {
         await stopAgent();
@@ -77,7 +81,7 @@ export function useAgentConnection(
         setStatus("error");
       }
     }
-  }, [ctxRef, onUpdate, onPermissionRequest, settingsRef]);
+  }, [ctxRef, onUpdate, onPermissionRequest, onElicitationRequest, settingsRef]);
 
   const reconnect = useCallback(async () => {
     await stopAgent().catch(() => {});

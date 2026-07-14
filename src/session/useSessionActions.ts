@@ -28,6 +28,7 @@ interface TurnDeps {
   images: PromptImage[];
   seq: number;
   dispatch: Dispatch<SessionsAction>;
+  onTurnComplete: (kind: "reply" | "compaction") => void;
 }
 
 /// Apply the user's preferred default mode/model to a freshly created session
@@ -67,15 +68,19 @@ async function runPromptTurn({
   images,
   seq,
   dispatch,
+  onTurnComplete,
 }: TurnDeps): Promise<void> {
   dispatch({ kind: "submit", sessionId, userId: `u${seq}`, assistantId: `a${seq}`, text, images });
+  let completed = false;
   try {
-    await ctx.request(methods.agent.session.prompt, {
+    const response = await ctx.request(methods.agent.session.prompt, {
       sessionId,
       prompt: contentBlocksForPrompt(text, images),
     });
+    completed = response.stopReason !== "cancelled";
   } finally {
     dispatch({ kind: "end", sessionId });
+    if (completed) onTurnComplete(text.trim() === "/compact" ? "compaction" : "reply");
   }
 }
 
@@ -87,6 +92,7 @@ export function useSessionActions(
   dispatch: Dispatch<SessionsAction>,
   activeId: string | undefined,
   settingsRef: MutableRefObject<Settings>,
+  onTurnComplete: (kind: "reply" | "compaction") => void,
 ): SessionActions {
   const turnSeq = useRef(0);
 
@@ -125,10 +131,10 @@ export function useSessionActions(
     async (text: string, images: PromptImage[] = []) => {
       if (text.trim().length === 0 && images.length === 0) return;
       await withActive((ctx, sessionId) =>
-        runPromptTurn({ ctx, sessionId, text, images, seq: turnSeq.current++, dispatch }),
+        runPromptTurn({ ctx, sessionId, text, images, seq: turnSeq.current++, dispatch, onTurnComplete }),
       );
     },
-    [withActive, dispatch],
+    [withActive, dispatch, onTurnComplete],
   );
 
   const cancel = useCallback(

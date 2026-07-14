@@ -4,6 +4,9 @@ import type { SessionConfigOption } from "@agentclientprotocol/sdk";
 /// special-cased only because the engine also announces mode changes through
 /// the legacy `current_mode_update` channel (e.g. auto-switching to plan mode).
 export const MODE_CONFIG_ID = "mode";
+export const MODEL_CONFIG_ID = "model";
+export const EFFORT_CONFIG_ID = "effort";
+export const FAST_MODE_CONFIG_ID = "fast";
 
 /// A select-style config option flattened for rendering: the mode/model/effort/
 /// agent/fast dropdowns all share this shape.
@@ -24,7 +27,12 @@ export function selectConfigs(options?: SessionConfigOption[]): SelectConfig[] {
     if (option.type !== "select") continue;
     const values = flattenOptions(option.options);
     if (values.length < 2) continue;
-    selects.push({ id: option.id, name: option.name, currentValue: option.currentValue, options: values });
+    selects.push({
+      id: option.id,
+      name: option.name,
+      currentValue: option.currentValue,
+      options: values,
+    });
   }
   return selects;
 }
@@ -35,7 +43,11 @@ function flattenOptions(
 ): SelectConfig["options"] {
   return options.flatMap((entry) =>
     "options" in entry
-      ? entry.options.map((o) => ({ value: o.value, name: o.name, description: o.description ?? undefined }))
+      ? entry.options.map((o) => ({
+          value: o.value,
+          name: o.name,
+          description: o.description ?? undefined,
+        }))
       : [{ value: entry.value, name: entry.name, description: entry.description ?? undefined }],
   );
 }
@@ -49,6 +61,8 @@ export function patchCurrentValue(
 ): SessionConfigOption[] | undefined {
   if (!options) return options;
   return options.map((option) =>
-    option.id === configId && option.type === "select" ? { ...option, currentValue: value } : option,
+    option.id === configId && option.type === "select"
+      ? { ...option, currentValue: value }
+      : option,
   );
 }

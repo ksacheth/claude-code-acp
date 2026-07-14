@@ -2,6 +2,8 @@ import {
   client as acpClient,
   methods,
   type ClientContext,
+  type CreateElicitationRequest,
+  type CreateElicitationResponse,
   type InitializeResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
@@ -15,6 +17,8 @@ export interface ConnectHandlers {
   onSessionUpdate?: (update: SessionNotification) => void;
   /// Decide a permission request. Defaults to auto-cancel (logged) when unset.
   onPermissionRequest?: (request: RequestPermissionRequest) => Promise<RequestPermissionResponse>;
+  /// Render a form elicitation such as Claude's AskUserQuestion tool.
+  onElicitationRequest?: (request: CreateElicitationRequest) => Promise<CreateElicitationResponse>;
 }
 
 export interface AgentConnection {
@@ -49,11 +53,16 @@ export async function connectAgent(
       console.warn("[acp] permission request auto-cancelled (no handler):", ctx.params);
       return Promise.resolve({ outcome: { outcome: "cancelled" } });
     })
+    .onRequest(methods.client.elicitation.create, (ctx): Promise<CreateElicitationResponse> => {
+      if (handlers.onElicitationRequest) return handlers.onElicitationRequest(ctx.params);
+      console.warn("[acp] elicitation auto-cancelled (no handler):", ctx.params);
+      return Promise.resolve({ action: "cancel" });
+    })
     .connect(stream);
 
   const init = await connection.agent.request(methods.agent.initialize, {
     protocolVersion: 1,
-    clientCapabilities: {},
+    clientCapabilities: { elicitation: { form: {} } },
   });
 
   return {

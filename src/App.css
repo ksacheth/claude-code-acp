@@ -791,6 +791,75 @@ button.cancel {
   border: 1px solid rgba(176, 42, 55, 0.4);
 }
 
+.elicitation-modal {
+  max-width: 38em;
+}
+
+.elicitation-message {
+  margin: 0.1em 0 1em;
+  color: var(--text-muted);
+}
+
+.elicitation-fields {
+  display: grid;
+  gap: 0.9em;
+  margin-bottom: 1em;
+}
+
+.elicitation-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0.8em;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.elicitation-field legend {
+  padding: 0 0.25em;
+  font-weight: 600;
+}
+
+.elicitation-field p {
+  margin: 0 0 0.55em;
+  color: var(--text-muted);
+  font-size: 0.88em;
+}
+
+.elicitation-field textarea,
+.elicitation-field input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5em 0.6em;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: inherit;
+  font: inherit;
+}
+
+.elicitation-options {
+  display: grid;
+  gap: 0.5em;
+}
+
+.elicitation-options label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.55em;
+  align-items: start;
+}
+
+.elicitation-options small {
+  grid-column: 2;
+  color: var(--text-muted);
+}
+
+.elicitation-boolean {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
 .update-modal {
   max-width: 30em;
 }
@@ -860,7 +929,14 @@ html[data-theme="dark"] .command-name {
 
 /* Polished application shell ------------------------------------------------ */
 :root {
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "Segoe UI",
+    sans-serif;
   color: #2d2926;
   background: #f7f5f2;
   color-scheme: light;
@@ -897,7 +973,12 @@ select {
 button {
   border-radius: 10px;
   background: var(--accent);
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
 
 button:not(:disabled):hover {
@@ -930,8 +1011,7 @@ button:disabled {
 .app {
   position: relative;
   background:
-    radial-gradient(circle at 90% -15%, rgba(201, 99, 66, 0.08), transparent 30%),
-    var(--surface);
+    radial-gradient(circle at 90% -15%, rgba(201, 99, 66, 0.08), transparent 30%), var(--surface);
 }
 
 .sidebar {
@@ -946,6 +1026,40 @@ button:disabled {
   align-items: center;
   gap: 0.75em;
   padding: 1.1em 1em 0.85em;
+}
+
+.sidebar-brand-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar-toggle-button {
+  display: inline-grid;
+  width: 2.15em;
+  height: 2.15em;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.sidebar-toggle-button:not(:disabled):hover {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.sidebar-toggle-button svg {
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .brand-mark,
@@ -1033,8 +1147,12 @@ button:disabled {
 }
 
 .session-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25em;
   margin-bottom: 0.28em;
-  padding: 0.62em 0.72em;
+  padding: 0.18em;
   border: 1px solid transparent;
   border-radius: 10px;
 }
@@ -1047,6 +1165,53 @@ button:disabled {
   border-color: #e9d5cc;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
+}
+
+.session-open {
+  min-width: 0;
+  flex: 1;
+  padding: 0.44em 0.52em;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.session-open:not(:disabled):hover {
+  background: transparent;
+}
+
+.session-delete {
+  display: inline-grid;
+  width: 2em;
+  height: 2em;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.session-item:hover .session-delete,
+.session-item:focus-within .session-delete {
+  opacity: 1;
+}
+
+.session-delete:not(:disabled):hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.session-delete svg {
+  width: 1.05em;
+  height: 1.05em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .session-title {
@@ -1063,6 +1228,45 @@ button:disabled {
   background: var(--accent);
 }
 
+.delete-session-modal {
+  width: min(28em, calc(100vw - 3em));
+}
+
+.delete-session-modal p {
+  margin: 0.65em 0;
+}
+
+.delete-session-cwd {
+  margin-bottom: 1em;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.78em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-session-error {
+  margin-bottom: 0.8em;
+  color: var(--danger);
+  font-size: 0.82em;
+}
+
+.modal-options .secondary {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.modal-options .delete-confirm {
+  background: var(--danger);
+}
+
+@media (hover: none) {
+  .session-delete {
+    opacity: 1;
+  }
+}
+
 .app-header {
   min-height: 4.45em;
   padding: 0.75em 1.35em;
@@ -1074,6 +1278,13 @@ button:disabled {
 
 .header-title-group {
   line-height: 1.25;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65em;
+  min-width: 0;
 }
 
 .title {
@@ -1276,13 +1487,19 @@ button:disabled {
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 10px 32px rgba(57, 45, 36, 0.1), 0 1px 2px rgba(57, 45, 36, 0.08);
-  transition: border-color 140ms ease, box-shadow 140ms ease;
+  box-shadow:
+    0 10px 32px rgba(57, 45, 36, 0.1),
+    0 1px 2px rgba(57, 45, 36, 0.08);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .composer-box:focus-within {
   border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
-  box-shadow: 0 12px 36px rgba(57, 45, 36, 0.11), 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow:
+    0 12px 36px rgba(57, 45, 36, 0.11),
+    0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .composer-box.is-dragging {
@@ -1320,6 +1537,332 @@ button:disabled {
   justify-content: space-between;
   gap: 0.75em;
   padding: 0.35em 0.45em 0.48em 0.55em;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  margin-left: auto;
+}
+
+.composer-usage {
+  white-space: nowrap;
+}
+
+.composer-config-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  min-height: 2.35em;
+  padding: 0.32em 0.2em 0;
+}
+
+.composer-config-left,
+.composer-config-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  min-width: 0;
+}
+
+.composer-config-right {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.composer-config-select {
+  min-height: 2.15em;
+  padding: 0.28em 1.75em 0.28em 0.65em;
+  border-color: transparent;
+  background: transparent;
+  font-size: 0.78em;
+  font-weight: 560;
+}
+
+.composer-config-select:not(:disabled):hover {
+  border-color: var(--border);
+  background: var(--surface-muted);
+}
+
+.composer-config-left .config-mode {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.config-menu {
+  position: relative;
+  flex: none;
+}
+
+.config-menu-trigger {
+  min-height: 2.15em;
+  padding: 0.28em 0.65em;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78em;
+  font-weight: 560;
+}
+
+.config-menu-trigger:not(:disabled):hover,
+.config-menu-trigger[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-muted);
+}
+
+.config-menu-mode .config-menu-trigger {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.config-menu-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.65em);
+  z-index: 20;
+  width: min(23em, calc(100vw - 2em));
+  padding: 0.8em;
+  border: 1px solid var(--border-strong);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.config-menu-mode .config-menu-popover {
+  right: auto;
+  left: 0;
+  width: min(19em, calc(100vw - 2em));
+}
+
+.config-menu-heading,
+.config-menu-section-label {
+  color: var(--text-muted);
+}
+
+.config-menu-heading {
+  padding: 0.15em 0.45em 0.45em;
+  font-size: 0.82em;
+}
+
+.config-menu-options {
+  display: grid;
+  gap: 0.08em;
+}
+
+.config-menu-option {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.55em;
+  width: 100%;
+  min-height: 2.15em;
+  padding: 0.35em 0.45em;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.config-menu-option:not(:disabled):hover {
+  background: var(--surface-muted);
+}
+
+.config-menu-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-menu-check {
+  font-weight: 700;
+}
+
+.config-menu-shortcut {
+  min-width: 0.9em;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.config-menu-fast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-top: 0.55em;
+  padding: 0.7em 0.45em 0.1em;
+  border-top: 1px solid var(--border);
+  font-size: 0.86em;
+}
+
+.config-menu-section-label {
+  margin-bottom: 0.18em;
+  font-size: 0.85em;
+}
+
+.config-toggle {
+  position: relative;
+  width: 2.3em;
+  height: 1.35em;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.config-toggle span {
+  position: absolute;
+  top: 0.2em;
+  left: 0.2em;
+  width: 0.95em;
+  height: 0.95em;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform 140ms ease,
+    background 140ms ease;
+}
+
+.config-toggle[aria-checked="true"] {
+  background: var(--accent-soft);
+}
+
+.config-toggle[aria-checked="true"] span {
+  background: var(--accent);
+  transform: translateX(0.95em);
+}
+
+.config-toggle:not(:disabled):hover {
+  background: var(--surface-muted);
+}
+
+.effort-control {
+  position: relative;
+  flex: none;
+}
+
+.effort-trigger {
+  min-height: 2.15em;
+  padding: 0.28em 0.65em;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.78em;
+  font-weight: 600;
+}
+
+.effort-trigger:not(:disabled):hover {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.effort-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.65em);
+  z-index: 20;
+  width: min(22em, calc(100vw - 2em));
+  padding: 0.9em;
+  border: 1px solid var(--border-strong);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.effort-popover-heading,
+.effort-scale-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.effort-popover-heading {
+  margin-bottom: 0.85em;
+  font-size: 0.9em;
+}
+
+.effort-popover-heading strong {
+  font-weight: 650;
+}
+
+.effort-help {
+  display: inline-grid;
+  width: 1.25em;
+  height: 1.25em;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 0.75em;
+}
+
+.effort-scale-labels {
+  color: var(--text-muted);
+  font-size: 0.76em;
+}
+
+.effort-slider-wrap {
+  position: relative;
+  height: 2.2em;
+  margin-top: 0.35em;
+  padding-inline: 0.2em;
+  border-radius: 9px;
+  background: var(--surface-subtle);
+}
+
+.effort-slider {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.effort-slider::-webkit-slider-thumb {
+  width: 1.55em;
+  height: 1.55em;
+  appearance: none;
+  border: 0;
+  border-radius: 7px;
+  background: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.effort-slider::-moz-range-thumb {
+  width: 1.55em;
+  height: 1.55em;
+  border: 0;
+  border-radius: 7px;
+  background: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.effort-ticks {
+  position: absolute;
+  inset: 0 0.65em;
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-items: center;
+}
+
+.effort-ticks span {
+  width: 0.22em;
+  height: 0.22em;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.effort-ticks span.active {
+  background: var(--accent);
 }
 
 .composer-tools {
@@ -1508,6 +2051,12 @@ button.cancel {
   box-shadow: var(--shadow-lg);
 }
 
+.settings-modal {
+  width: min(36em, calc(100vw - 3em));
+  min-width: 34em;
+  max-width: 38em;
+}
+
 .modal-backdrop {
   background: rgba(39, 31, 26, 0.42);
   backdrop-filter: blur(5px);
@@ -1548,7 +2097,11 @@ button.cancel {
 
 @media (max-width: 680px) {
   .sidebar {
-    display: none;
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: min(17.25em, calc(100vw - 3em));
+    box-shadow: var(--shadow-lg);
   }
 
   .app-header {
@@ -1576,6 +2129,14 @@ button.cancel {
 
   .composer-hint {
     display: none;
+  }
+
+  .composer-config-bar {
+    flex-wrap: wrap;
+  }
+
+  .composer-config-select {
+    max-width: 9.5em;
   }
 
   .message {
@@ -1658,7 +2219,11 @@ html[data-theme="dark"] .thought {
 
 html[data-theme="dark"] .composer {
   border: 0;
-  background: linear-gradient(to top, var(--surface) 72%, rgba(33, 31, 29, 0));
+  background: transparent;
+}
+
+html[data-theme="dark"] .composer-box {
+  background: var(--surface-subtle);
 }
 
 html[data-theme="dark"] .composer textarea,
@@ -1674,6 +2239,30 @@ html[data-theme="dark"] .usage,
 html[data-theme="dark"] .icon-button,
 html[data-theme="dark"] .attachment {
   background: var(--surface-muted);
+}
+
+html[data-theme="dark"] .composer-config-select {
+  background: transparent;
+}
+
+html[data-theme="dark"] .composer-config-left .config-mode {
+  background: var(--accent-soft);
+}
+
+html[data-theme="dark"] .effort-popover {
+  background: var(--surface);
+}
+
+html[data-theme="dark"] .effort-slider-wrap {
+  background: #171513;
+}
+
+html[data-theme="dark"] .effort-slider::-webkit-slider-thumb {
+  background: #b9b6ae;
+}
+
+html[data-theme="dark"] .effort-slider::-moz-range-thumb {
+  background: #b9b6ae;
 }
 
 html[data-theme="dark"] .drop-overlay {

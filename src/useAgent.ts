@@ -3,6 +3,8 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useOpenSessionsPersistence } from "./session/useOpenSessionsPersistence";
 import type {
   ClientContext,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
   SessionInfo,
@@ -15,9 +17,11 @@ import {
   type ConnectionStatus,
 } from "./acp/useAgentConnection";
 import { getClaudeAuthStatus, startClaudeLogin } from "./acp/tauriChannel";
+import { isFormElicitation, type FormElicitationRequest } from "./components/ElicitationModal";
 import { useSessionActions } from "./session/useSessionActions";
-import { useSessionHistory } from "./session/useSessionHistory";
+import { useSessionHistory, type DeleteSessionTarget } from "./session/useSessionHistory";
 import { useSettings } from "./session/useSettings";
+import { notifyWhenUnfocused } from "./notifications";
 import type { Settings } from "./session/settings";
 import type { PromptImage } from "./session/attachments";
 import {
@@ -43,15 +47,18 @@ export interface AgentState {
   canPrompt: boolean;
   /// A permission request awaiting the user's decision, if any.
   permission?: RequestPermissionRequest;
+  /// A structured question from Claude or an MCP server awaiting input.
+  elicitation?: FormElicitationRequest;
   newSession: () => Promise<void>;
   switchSession: (id: string) => void;
   sendPrompt: (text: string, images?: PromptImage[]) => Promise<void>;
   cancel: () => Promise<void>;
   setConfig: (configId: string, value: string) => Promise<void>;
   listSessions: () => Promise<SessionInfo[]>;
-  deleteSession: (info: SessionInfo) => Promise<void>;
+  deleteSession: (info: DeleteSessionTarget) => Promise<void>;
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
+  resolveElicitation: (response: CreateElicitationResponse) => void;
   reconnect: () => Promise<void>;
   /// Starts the browser-based Claude subscription login, then reconnects the agent.
   login: () => Promise<void>;
@@ -75,11 +82,15 @@ export function useAgent(): AgentState {
   settingsRef.current = settings;
   const [sessions, dispatch] = useReducer(sessionsReducer, emptySessions);
   const [permission, setPermission] = useState<RequestPermissionRequest>();
+  const [elicitation, setElicitation] = useState<FormElicitationRequest>();
   const [loggingIn, setLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string>();
   const [loggedIn, setLoggedIn] = useState<boolean>();
   // The pending resolver is held in a ref so resolving is a plain side effect.
   const resolverRef = useRef<((response: RequestPermissionResponse) => void) | null>(null);
+  const elicitationResolverRef = useRef<((response: CreateElicitationResponse) => void) | null>(
+    null,
+  );
 
   const onUpdate = useCallback((notification: SessionNotification) => {
     dispatch({ kind: "update", sessionId: notification.sessionId, update: notification.update });
@@ -89,6 +100,21 @@ export function useAgent(): AgentState {
     return new Promise<RequestPermissionResponse>((resolve) => {
       resolverRef.current = resolve;
       setPermission(request);
+      void notifyWhenUnfocused(
+        "Claude needs permission",
+        request.toolCall.title ?? "Review the requested action.",
+      );
+    });
+  }, []);
+
+  const onElicitationRequest = useCallback((request: CreateElicitationRequest) => {
+    if (!isFormElicitation(request) || elicitationResolverRef.current) {
+      return Promise.resolve({ action: "cancel" } as CreateElicitationResponse);
+    }
+    return new Promise<CreateElicitationResponse>((resolve) => {
+      elicitationResolverRef.current = resolve;
+      setElicitation(request);
+      void notifyWhenUnfocused("Claude has a question", request.message);
     });
   }, []);
 
@@ -96,6 +122,19 @@ export function useAgent(): AgentState {
     resolverRef.current?.(response);
     resolverRef.current = null;
     setPermission(undefined);
+  }, []);
+
+  const resolveElicitation = useCallback((response: CreateElicitationResponse) => {
+    elicitationResolverRef.current?.(response);
+    elicitationResolverRef.current = null;
+    setElicitation(undefined);
+  }, []);
+
+  const onTurnComplete = useCallback((kind: "reply" | "compaction") => {
+    void notifyWhenUnfocused(
+      kind === "compaction" ? "Compaction complete" : "Claude finished",
+      kind === "compaction" ? "Your conversation is ready to continue." : "Your response is ready.",
+    );
   }, []);
 
   // onReset runs before a reconnect clears the store; it also tells the
@@ -108,11 +147,18 @@ export function useAgent(): AgentState {
   }, []);
 
   const openIds = sessions.sessions.map((s) => s.id);
-  const actions = useSessionActions(ctxRef, dispatch, sessions.activeId, settingsRef);
+  const actions = useSessionActions(
+    ctxRef,
+    dispatch,
+    sessions.activeId,
+    settingsRef,
+    onTurnComplete,
+  );
   const history = useSessionHistory(ctxRef, dispatch, openIds, settingsRef);
   const connection = useAgentConnection(ctxRef, settingsRef, {
     onUpdate,
     onPermissionRequest,
+    onElicitationRequest,
     onReset,
   });
 
@@ -148,7 +194,9 @@ export function useAgent(): AgentState {
       const signedIn = await getClaudeAuthStatus(settingsRef.current);
       setLoggedIn(signedIn);
       if (!signedIn) {
-        throw new Error("Claude sign-in did not complete. Finish it in your browser, then try again.");
+        throw new Error(
+          "Claude sign-in did not complete. Finish it in your browser, then try again.",
+        );
       }
       await connection.reconnect();
     } catch (error) {
@@ -167,6 +215,7 @@ export function useAgent(): AgentState {
     activeId: sessions.activeId,
     canPrompt: connection.status === "connected" && !!active && !active.transcript.turnActive,
     permission,
+    elicitation,
     newSession: actions.newSession,
     switchSession: actions.switchSession,
     sendPrompt: actions.sendPrompt,
@@ -176,6 +225,7 @@ export function useAgent(): AgentState {
     deleteSession: history.deleteSession,
     resumeSession: history.resumeSession,
     resolvePermission,
+    resolveElicitation,
     reconnect: connection.reconnect,
     login,
     loggingIn,

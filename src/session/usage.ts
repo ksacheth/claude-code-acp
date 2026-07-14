@@ -70,8 +70,9 @@ export function mergeRateLimit(
   next: SubscriptionUsageLimit,
 ): SubscriptionUsageLimit[] {
   const key = next.type ?? "current";
+  const matching = (limits ?? []).find((limit) => (limit.type ?? "current") === key);
   const withoutMatching = (limits ?? []).filter((limit) => (limit.type ?? "current") !== key);
-  return [...withoutMatching, next];
+  return [...withoutMatching, matching ? { ...matching, ...next } : next];
 }
 
 function resetIn(resetsAt: number, nowMs: number): string {

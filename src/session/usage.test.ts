@@ -74,6 +74,25 @@ describe("Claude subscription limits", () => {
     expect(mergeRateLimit(mergeRateLimit(undefined, fiveHour), weekly)).toEqual([fiveHour, weekly]);
   });
 
+  it("retains the last percentage when a status-only event follows", () => {
+    const previous = {
+      status: "allowed" as const,
+      type: "five_hour" as const,
+      utilization: 34,
+      resetsAt: 1_800_007_200_000,
+    };
+    expect(
+      mergeRateLimit([previous], { status: "allowed_warning", type: "five_hour" }),
+    ).toEqual([
+      {
+        status: "allowed_warning",
+        type: "five_hour",
+        utilization: 34,
+        resetsAt: 1_800_007_200_000,
+      },
+    ]);
+  });
+
   it("ignores malformed rate-limit metadata", () => {
     expect(rateLimitFromMeta({ "_claude/rateLimit": { status: "unknown" } })).toBeUndefined();
   });

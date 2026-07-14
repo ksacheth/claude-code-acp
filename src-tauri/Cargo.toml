@@ -1,6 +1,6 @@
 [package]
 name = "claude-tauri"
-version = "0.2.6"
+version = "0.2.7"
 description = "Personal Claude desktop app on the claude-agent-acp engine"
 authors = ["sacheth"]
 edition = "2021"
@@ -20,3 +20,4 @@ tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tauri-plugin-notification = "2"

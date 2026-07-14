@@ -1,9 +1,20 @@
 import { type ChangeEventHandler, type FormEvent, type KeyboardEvent, type RefObject } from "react";
-import type { AvailableCommand } from "@agentclientprotocol/sdk";
+import type { AvailableCommand, SessionConfigOption } from "@agentclientprotocol/sdk";
 
 import { imageDataUrl, MAX_IMAGE_COUNT, type PromptImage } from "../session/attachments";
+import {
+  EFFORT_CONFIG_ID,
+  FAST_MODE_CONFIG_ID,
+  MODE_CONFIG_ID,
+  MODEL_CONFIG_ID,
+  selectConfigs,
+  type SelectConfig,
+} from "../session/config";
 import { useCommandPalette } from "../session/useCommandPalette";
+import { formatContext, formatCost, type Usage } from "../session/usage";
 import { CommandPalette } from "./CommandPalette";
+import { EffortControl } from "./EffortControl";
+import { SessionConfigMenu } from "./SessionConfigMenu";
 import { useImageAttachments } from "./useImageAttachments";
 
 interface ComposerProps {
@@ -15,6 +26,9 @@ interface ComposerProps {
   commands?: AvailableCommand[];
   onSend: (text: string, images: PromptImage[]) => void;
   onCancel: () => void;
+  usage?: Usage;
+  configOptions?: SessionConfigOption[];
+  onSetConfig: (configId: string, value: string) => void;
 }
 
 function AttachmentIcon() {
@@ -72,10 +86,13 @@ interface ComposerToolbarProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   onFilesSelected: ChangeEventHandler<HTMLInputElement>;
   onCancel: () => void;
+  usage?: Usage;
 }
 
 function ComposerToolbar(props: ComposerToolbarProps) {
-  const { busy, disabled, hasContent, imageCount, fileInputRef, onFilesSelected, onCancel } = props;
+  const { busy, disabled, hasContent, imageCount, fileInputRef, onFilesSelected, onCancel, usage } =
+    props;
+  const cost = usage && formatCost(usage.cost);
   return (
     <div className="composer-toolbar">
       <div className="composer-tools">
@@ -100,20 +117,28 @@ function ComposerToolbar(props: ComposerToolbarProps) {
         </button>
         <span className="composer-hint">Shift+Enter for a new line</span>
       </div>
-      {busy ? (
-        <button type="button" className="cancel composer-action" onClick={onCancel}>
-          <span className="stop-icon" /> Stop
-        </button>
-      ) : (
-        <button
-          type="submit"
-          className="send-button composer-action"
-          disabled={!hasContent}
-          aria-label="Send message"
-        >
-          <span>Send</span> <SendIcon />
-        </button>
-      )}
+      <div className="composer-actions">
+        {busy ? (
+          <button type="button" className="cancel composer-action" onClick={onCancel}>
+            <span className="stop-icon" /> Stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="send-button composer-action"
+            disabled={!hasContent}
+            aria-label="Send message"
+          >
+            <span>Send</span> <SendIcon />
+          </button>
+        )}
+        {usage && (
+          <div className="usage composer-usage" title="Context tokens used / window (·cost)">
+            {formatContext(usage)}
+            {cost && <span className="cost"> · {cost}</span>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -127,10 +152,12 @@ interface ComposerBoxProps {
   setDraft: (text: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onCancel: () => void;
+  usage?: Usage;
 }
 
 function ComposerBox(props: ComposerBoxProps) {
-  const { draft, disabled, busy, hasContent, attachments, setDraft, onKeyDown, onCancel } = props;
+  const { draft, disabled, busy, hasContent, attachments, setDraft, onKeyDown, onCancel, usage } =
+    props;
   return (
     <div
       className={`composer-box${attachments.dragging ? " is-dragging" : ""}`}
@@ -164,8 +191,95 @@ function ComposerBox(props: ComposerBoxProps) {
         fileInputRef={attachments.fileInputRef}
         onFilesSelected={attachments.onFilesSelected}
         onCancel={onCancel}
+        usage={usage}
       />
       {attachments.dragging && <div className="drop-overlay">Drop images to attach</div>}
+    </div>
+  );
+}
+
+function ConfigSelect({
+  config,
+  disabled,
+  onSetConfig,
+}: {
+  config: SelectConfig;
+  disabled: boolean;
+  onSetConfig: (configId: string, value: string) => void;
+}) {
+  return (
+    <select
+      className={`config-select composer-config-select config-${config.id}`}
+      title={config.name}
+      aria-label={config.name}
+      value={config.currentValue}
+      disabled={disabled}
+      onChange={(event) => onSetConfig(config.id, event.currentTarget.value)}
+    >
+      {config.options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ComposerConfigBar({
+  configOptions,
+  disabled,
+  onSetConfig,
+}: {
+  configOptions?: SessionConfigOption[];
+  disabled: boolean;
+  onSetConfig: (configId: string, value: string) => void;
+}) {
+  const configs = selectConfigs(configOptions);
+  const mode = configs.find((config) => config.id === MODE_CONFIG_ID);
+  const model = configs.find((config) => config.id === MODEL_CONFIG_ID);
+  const effort = configs.find((config) => config.id === EFFORT_CONFIG_ID);
+  const fastMode = configs.find((config) => config.id === FAST_MODE_CONFIG_ID);
+  const remaining = configs.filter(
+    (config) =>
+      config.id !== MODE_CONFIG_ID &&
+      config.id !== MODEL_CONFIG_ID &&
+      config.id !== EFFORT_CONFIG_ID &&
+      config.id !== FAST_MODE_CONFIG_ID,
+  );
+  if (!mode && !model && !effort && remaining.length === 0) return null;
+
+  return (
+    <div className="composer-config-bar">
+      <div className="composer-config-left">
+        {mode && (
+          <SessionConfigMenu
+            config={mode}
+            kind="mode"
+            disabled={disabled}
+            onSetConfig={onSetConfig}
+          />
+        )}
+      </div>
+      <div className="composer-config-right">
+        {model && (
+          <SessionConfigMenu
+            config={model}
+            kind="model"
+            fastMode={fastMode}
+            disabled={disabled}
+            onSetConfig={onSetConfig}
+          />
+        )}
+        {remaining.map((config) => (
+          <ConfigSelect
+            key={config.id}
+            config={config}
+            disabled={disabled}
+            onSetConfig={onSetConfig}
+          />
+        ))}
+        {effort && <EffortControl config={effort} disabled={disabled} onSetConfig={onSetConfig} />}
+      </div>
     </div>
   );
 }
@@ -180,6 +294,9 @@ export function Composer({
   commands,
   onSend,
   onCancel,
+  usage,
+  configOptions,
+  onSetConfig,
 }: ComposerProps) {
   const { draft, setDraft, matches, active, paletteOpen, pick, onKeyDown } =
     useCommandPalette(commands);
@@ -222,6 +339,12 @@ export function Composer({
         setDraft={setDraft}
         onKeyDown={onComposerKeyDown}
         onCancel={onCancel}
+        usage={usage}
+      />
+      <ComposerConfigBar
+        configOptions={configOptions}
+        disabled={disabled}
+        onSetConfig={onSetConfig}
       />
       {attachments.error && (
         <div className="attachment-error" role="alert">

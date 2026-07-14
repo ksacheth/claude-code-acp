@@ -6,11 +6,13 @@ import type { SessionsAction } from "./sessions";
 import type { OpenSessionsSnapshot } from "./openSessions";
 import { toMcpServers, type Settings } from "./settings";
 
+export type DeleteSessionTarget = Pick<SessionInfo, "sessionId">;
+
 export interface SessionHistory {
   /// List persisted sessions across all directories.
   listSessions: () => Promise<SessionInfo[]>;
   /// Permanently remove a persisted conversation and any matching open tab.
-  deleteSession: (info: SessionInfo) => Promise<void>;
+  deleteSession: (info: DeleteSessionTarget) => Promise<void>;
   /// Resume a persisted session: its history replays into a rebuilt transcript.
   resumeSession: (info: SessionInfo) => Promise<void>;
   /// Re-open a saved set of sessions on launch (skipping any that fail to load)
@@ -40,7 +42,11 @@ async function resumeInto(
   // has finished so it is rendered as settled, not as a live response.
   dispatch({ kind: "end", sessionId: info.sessionId });
   if (response.configOptions) {
-    dispatch({ kind: "setConfig", sessionId: info.sessionId, configOptions: response.configOptions });
+    dispatch({
+      kind: "setConfig",
+      sessionId: info.sessionId,
+      configOptions: response.configOptions,
+    });
   }
   dispatch({ kind: "activate", id: info.sessionId });
 }
@@ -99,7 +105,7 @@ export function useSessionHistory(
   );
 
   const deleteSession = useCallback(
-    async (info: SessionInfo) => {
+    async (info: DeleteSessionTarget) => {
       const ctx = ctxRef.current;
       if (!ctx) return;
       await ctx.request(methods.agent.session.delete, { sessionId: info.sessionId });
