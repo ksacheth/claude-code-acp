@@ -14,8 +14,11 @@ import type { PromptImage } from "./attachments";
 export interface SessionState {
   id: string;
   cwd: string;
-  /// Display label — the cwd's basename.
+  /// Display label: the engine's title once it sends one, else the cwd basename.
   title: string;
+  /// Where `title` came from. The sidebar prefers a persisted title over the
+  /// basename placeholder, which every chat in a project would share.
+  titleSource: "cwd" | "engine";
   transcript: TranscriptState;
   usage?: Usage;
   /// Unified session config (mode/model/effort/agent/fast) from the engine.
@@ -39,6 +42,8 @@ export type SessionsAction =
   | { kind: "activate"; id: string }
   | { kind: "remove"; id: string }
   | { kind: "clear" }
+  /// A title the engine gave us (a rename, or its generated summary).
+  | { kind: "setTitle"; sessionId: string; title: string }
   /// Authoritative replace (session/new, load, or set_config_option response).
   | { kind: "setConfig"; sessionId: string; configOptions: SessionConfigOption[] }
   /// Optimistic single-value patch before the set_config_option response lands.
@@ -98,7 +103,9 @@ function applyUpdate(session: SessionState, update: SessionUpdate): SessionState
     case "plan":
       return { ...session, plan: update.entries };
     case "session_info_update":
-      return update.title ? { ...session, title: update.title } : session;
+      return update.title
+        ? { ...session, title: update.title, titleSource: "engine" }
+        : session;
     default:
       return {
         ...session,
@@ -145,6 +152,7 @@ function createSession(
     id,
     cwd,
     title: titleFromCwd(cwd),
+    titleSource: "cwd",
     transcript: emptyTranscript,
     configOptions,
   };
@@ -181,6 +189,12 @@ export function sessionsReducer(state: SessionsState, action: SessionsAction): S
       return { ...state, activeId: action.id };
     case "clear":
       return emptySessions;
+    case "setTitle":
+      return mapSession(state, action.sessionId, (s) => ({
+        ...s,
+        title: action.title,
+        titleSource: "engine",
+      }));
     case "setConfig":
       return mapSession(state, action.sessionId, (s) => ({
         ...s,

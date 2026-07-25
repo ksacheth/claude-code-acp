@@ -1,6 +1,6 @@
 # SPEC — Claude Tauri (Claude Desktop replacement)
 
-Status: v0.1.0 shipped (M0–M6 complete) · Owner: sacheth · Last updated: 2026-07-10
+Status: v0.1.0 shipped (M0–M7 complete) · Owner: sacheth · Last updated: 2026-07-25
 
 ## 1. Objective
 
@@ -99,6 +99,22 @@ the daily driver until all land.
 - Minimal settings UI: default mode, default model, agent path, env.
 - **Accept:** an MCP tool call from a user-configured server executes and
   renders like a built-in tool.
+
+### M7 — Project-grouped chat sidebar
+
+- The sidebar is the whole session browser (no History modal): chats grouped
+  under their project directory, collapsible, plus a flat `Chats` section for
+  chats with no project. Search filters both.
+- "No project" is a presentation concept, not a session kind: ACP requires a
+  `cwd`, so those chats are rooted in one designated chats directory (app-owned
+  by default, configurable), and any directory can be marked "not a project".
+- Chats and projects can be renamed. A chat's title goes to the engine
+  (`_claude/session/rename` → SDK `renameSession`); a project's is a local label,
+  since a project *is* its directory.
+- Launch resumes only the chat that was showing; the rest load when selected.
+- **Accept:** past chats are visible grouped by project without opening
+  anything; "New chat" starts one with no project and no directory picker.
+- See `tasks/plan-m7.md`.
 
 ### Ongoing — engine hacks (`src/`)
 

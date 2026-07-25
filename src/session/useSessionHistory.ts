@@ -1,23 +1,38 @@
-import { useCallback, type Dispatch, type MutableRefObject } from "react";
+import { useCallback, useState, type Dispatch, type MutableRefObject } from "react";
 
 import { methods, type ClientContext, type SessionInfo } from "@agentclientprotocol/sdk";
 
 import type { SessionsAction } from "./sessions";
-import type { OpenSessionsSnapshot } from "./openSessions";
+import type { LastSessionRef } from "./lastSession";
 import { toMcpServers, type Settings } from "./settings";
 
 export type DeleteSessionTarget = Pick<SessionInfo, "sessionId">;
 
+/// Enough of a chat to rename it. `cwd` lets the engine find the session file
+/// without loading the conversation, so a chat can be renamed from the sidebar.
+export interface RenameSessionTarget {
+  sessionId: string;
+  cwd: string;
+}
+
+/// ACP has no rename method; the engine exposes one as this extension request.
+const RENAME_SESSION_METHOD = "_claude/session/rename";
+
 export interface SessionHistory {
-  /// List persisted sessions across all directories.
-  listSessions: () => Promise<SessionInfo[]>;
-  /// Permanently remove a persisted conversation and any matching open tab.
+  /// Every persisted chat across all directories. `null` until the first load
+  /// finishes, which the sidebar shows as "loading" rather than "empty".
+  list: SessionInfo[] | null;
+  /// Re-read the persisted list (after a turn, a delete, or a new chat).
+  refreshList: () => Promise<void>;
+  /// Permanently remove a persisted conversation and close any open copy.
   deleteSession: (info: DeleteSessionTarget) => Promise<void>;
-  /// Resume a persisted session: its history replays into a rebuilt transcript.
+  /// Retitle a chat, open or not.
+  renameSession: (target: RenameSessionTarget, title: string) => Promise<void>;
+  /// Resume a persisted chat: its history replays into a rebuilt transcript.
+  /// Already-open chats are just activated, since re-loading replays twice.
   resumeSession: (info: SessionInfo) => Promise<void>;
-  /// Re-open a saved set of sessions on launch (skipping any that fail to load)
-  /// and re-select the one that was active.
-  restoreSessions: (snapshot: OpenSessionsSnapshot) => Promise<void>;
+  /// Re-open the chat that was showing when the app last closed.
+  restoreLast: (ref: LastSessionRef) => Promise<void>;
 }
 
 /// Enough of a session to resume it: the load call only needs id and cwd.
@@ -51,76 +66,94 @@ async function resumeInto(
   dispatch({ kind: "activate", id: info.sessionId });
 }
 
-/// Resume every session in a saved snapshot, skipping any that fail to load,
-/// then re-select the previously-active one (or the last that loaded).
-async function restoreAll(
-  ctx: ClientContext,
-  snapshot: OpenSessionsSnapshot,
-  dispatch: Dispatch<SessionsAction>,
-  settings: Settings,
-): Promise<void> {
-  const resumed: string[] = [];
-  for (const entry of snapshot.sessions) {
-    try {
-      await resumeInto(ctx, { sessionId: entry.id, cwd: entry.cwd }, dispatch, settings);
-      resumed.push(entry.id);
-    } catch (err) {
-      console.warn(`[claude-tauri] could not restore session ${entry.id}:`, err);
-    }
-  }
-  const active =
-    snapshot.activeId && resumed.includes(snapshot.activeId)
-      ? snapshot.activeId
-      : resumed[resumed.length - 1];
-  if (active) dispatch({ kind: "activate", id: active });
-}
-
-/// Browsing and resuming persisted sessions. Separate from live-session actions:
-/// it needs only the connection and the set of already-open ids.
+/// Browsing, resuming, and retitling persisted chats. Separate from live-session
+/// actions: it needs only the connection and the set of already-open ids.
 export function useSessionHistory(
   ctxRef: MutableRefObject<ClientContext | null>,
   dispatch: Dispatch<SessionsAction>,
   openIds: string[],
   settingsRef: MutableRefObject<Settings>,
 ): SessionHistory {
-  const listSessions = useCallback(async (): Promise<SessionInfo[]> => {
-    const ctx = ctxRef.current;
-    if (!ctx) return [];
-    const response = await ctx.request(methods.agent.session.list, {});
-    return response.sessions;
-  }, [ctxRef]);
+  const [list, setList] = useState<SessionInfo[] | null>(null);
+
+  // Every action here needs a live connection and nothing else; without one it is
+  // a no-op rather than an error, since the UI stays visible while disconnected.
+  const withCtx = useCallback(
+    (op: (ctx: ClientContext) => Promise<void>): Promise<void> => {
+      const ctx = ctxRef.current;
+      return ctx ? op(ctx) : Promise.resolve();
+    },
+    [ctxRef],
+  );
+
+  const refreshList = useCallback(
+    () =>
+      withCtx(async (ctx) => {
+        const response = await ctx.request(methods.agent.session.list, {});
+        setList(response.sessions);
+      }),
+    [withCtx],
+  );
 
   const resumeSession = useCallback(
-    async (info: SessionInfo) => {
-      const ctx = ctxRef.current;
-      if (!ctx) return;
-      // Already open — just show it; re-loading would replay history twice.
-      if (openIds.includes(info.sessionId)) {
-        dispatch({ kind: "activate", id: info.sessionId });
-        return;
-      }
-      await resumeInto(ctx, info, dispatch, settingsRef.current);
-    },
-    [ctxRef, dispatch, openIds, settingsRef],
+    (info: SessionInfo) =>
+      withCtx(async (ctx) => {
+        // Already open — just show it; re-loading would replay history twice.
+        if (openIds.includes(info.sessionId)) {
+          dispatch({ kind: "activate", id: info.sessionId });
+          return;
+        }
+        await resumeInto(ctx, info, dispatch, settingsRef.current);
+      }),
+    [withCtx, dispatch, openIds, settingsRef],
   );
 
   const deleteSession = useCallback(
-    async (info: DeleteSessionTarget) => {
-      const ctx = ctxRef.current;
-      if (!ctx) return;
-      await ctx.request(methods.agent.session.delete, { sessionId: info.sessionId });
-      dispatch({ kind: "remove", id: info.sessionId });
-    },
-    [ctxRef, dispatch],
+    (info: DeleteSessionTarget) =>
+      withCtx(async (ctx) => {
+        await ctx.request(methods.agent.session.delete, { sessionId: info.sessionId });
+        dispatch({ kind: "remove", id: info.sessionId });
+        setList((sessions) => sessions?.filter((s) => s.sessionId !== info.sessionId) ?? null);
+      }),
+    [withCtx, dispatch],
   );
 
-  const restoreSessions = useCallback(
-    async (snapshot: OpenSessionsSnapshot) => {
-      const ctx = ctxRef.current;
-      if (ctx) await restoreAll(ctx, snapshot, dispatch, settingsRef.current);
-    },
-    [ctxRef, dispatch, settingsRef],
+  const renameSession = useCallback(
+    (target: RenameSessionTarget, title: string) =>
+      withCtx(async (ctx) => {
+        // The engine sanitizes the title (collapsing whitespace, truncating), so
+        // its response is what to display, not what was typed.
+        const response = await ctx.request<{ title?: string }>(RENAME_SESSION_METHOD, {
+          sessionId: target.sessionId,
+          title,
+          cwd: target.cwd,
+        });
+        const stored = typeof response?.title === "string" ? response.title : title.trim();
+        dispatch({ kind: "setTitle", sessionId: target.sessionId, title: stored });
+        setList(
+          (sessions) =>
+            sessions?.map((s) =>
+              s.sessionId === target.sessionId ? { ...s, title: stored } : s,
+            ) ?? null,
+        );
+      }),
+    [withCtx, dispatch],
   );
 
-  return { listSessions, deleteSession, resumeSession, restoreSessions };
+  const restoreLast = useCallback(
+    (ref: LastSessionRef) =>
+      withCtx(async (ctx) => {
+        try {
+          await resumeInto(ctx, { sessionId: ref.id, cwd: ref.cwd }, dispatch, settingsRef.current);
+        } catch (err) {
+          // A deleted or unreadable chat must not block startup: the sidebar still
+          // lists everything, so the user can pick another.
+          console.warn(`[claude-tauri] could not restore session ${ref.id}:`, err);
+          dispatch({ kind: "remove", id: ref.id });
+        }
+      }),
+    [withCtx, dispatch, settingsRef],
+  );
+
+  return { list, refreshList, deleteSession, renameSession, resumeSession, restoreLast };
 }

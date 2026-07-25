@@ -8,6 +8,7 @@ import {
   type ServerForm,
   type SettingsForm,
 } from "../session/settingsForm";
+import { ChatsSettingsSection } from "./ChatsSettingsSection";
 import { McpServerRow } from "./McpServerRow";
 
 interface SettingsModalProps {
@@ -122,6 +123,12 @@ export function SettingsModal({
           </label>
           <p className="muted">Engine changes take effect on the next reconnect.</p>
         </section>
+
+        <ChatsSettingsSection
+          chatsDir={form.chatsDir}
+          unlistedDirsText={form.unlistedDirsText}
+          onChange={set}
+        />
 
         <section className="settings-section">
           <h3>Session defaults</h3>

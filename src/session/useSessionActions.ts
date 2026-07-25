@@ -8,8 +8,10 @@ import { toMcpServers, type Settings } from "./settings";
 import { contentBlocksForPrompt, type PromptImage } from "./attachments";
 
 export interface SessionActions {
-  /// Open a directory picker and start a new session rooted there (made active).
-  newSession: () => Promise<void>;
+  /// Start a new session (made active) rooted at `cwd`. Without one, a directory
+  /// picker chooses it, which is how starting work in a project goes; the chats
+  /// directory is passed directly for a chat with no project.
+  newSession: (cwd?: string) => Promise<void>;
   /// Show an existing session.
   switchSession: (id: string) => void;
   /// Send a prompt in the active session and stream the reply.
@@ -106,10 +108,10 @@ export function useSessionActions(
     [ctxRef, activeId],
   );
 
-  const newSession = useCallback(async () => {
+  const newSession = useCallback(async (cwd?: string) => {
     const ctx = ctxRef.current;
     if (!ctx) return;
-    const selected = await open({ directory: true, multiple: false });
+    const selected = cwd ?? (await open({ directory: true, multiple: false }));
     if (typeof selected !== "string") return;
     const settings = settingsRef.current;
     const response = await ctx.request(methods.agent.session.new, {

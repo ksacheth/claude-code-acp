@@ -12,6 +12,8 @@ const settings: Settings = {
   defaultMode: "plan",
   theme: "auto",
   mcpServers: [{ name: "filesystem", command: "npx", args: ["-y", "server"], env: [] }],
+  chatsDir: "/data/chats",
+  unlistedDirs: ["/Users/me"],
 };
 
 describe("SettingsModal", () => {
@@ -26,11 +28,17 @@ describe("SettingsModal", () => {
     expect(html).toContain('value="filesystem"');
     expect(html).toContain('value="-y server"');
     expect(html).toContain("+ Add MCP server");
+    expect(html).toContain('value="/data/chats"');
+    expect(html).toContain("/Users/me");
   });
 
   it("renders empty fields for default (unconfigured) settings", () => {
     const html = renderToStaticMarkup(
-      <SettingsModal settings={{ env: [], mcpServers: [], theme: "auto" }} onSave={() => {}} onClose={() => {}} />,
+      <SettingsModal
+        settings={{ env: [], mcpServers: [], theme: "auto", unlistedDirs: [] }}
+        onSave={() => {}}
+        onClose={() => {}}
+      />,
     );
     expect(html).toContain("Settings");
     expect(html).not.toContain("mcp-row");

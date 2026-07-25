@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
-import { useOpenSessionsPersistence } from "./session/useOpenSessionsPersistence";
+import { useLastSessionPersistence } from "./session/useLastSessionPersistence";
 import type {
   ClientContext,
   CreateElicitationRequest,
@@ -19,7 +19,11 @@ import {
 import { getClaudeAuthStatus, startClaudeLogin } from "./acp/tauriChannel";
 import { isFormElicitation, type FormElicitationRequest } from "./components/ElicitationModal";
 import { useSessionActions } from "./session/useSessionActions";
-import { useSessionHistory, type DeleteSessionTarget } from "./session/useSessionHistory";
+import {
+  useSessionHistory,
+  type DeleteSessionTarget,
+  type RenameSessionTarget,
+} from "./session/useSessionHistory";
 import { useSettings } from "./session/useSettings";
 import { notifyWhenUnfocused } from "./notifications";
 import type { Settings } from "./session/settings";
@@ -49,13 +53,16 @@ export interface AgentState {
   permission?: RequestPermissionRequest;
   /// A structured question from Claude or an MCP server awaiting input.
   elicitation?: FormElicitationRequest;
-  newSession: () => Promise<void>;
+  newSession: (cwd?: string) => Promise<void>;
   switchSession: (id: string) => void;
   sendPrompt: (text: string, images?: PromptImage[]) => Promise<void>;
   cancel: () => Promise<void>;
   setConfig: (configId: string, value: string) => Promise<void>;
-  listSessions: () => Promise<SessionInfo[]>;
+  /// Every persisted chat, for the sidebar. `null` while the first load runs.
+  sessionList: SessionInfo[] | null;
+  refreshSessionList: () => Promise<void>;
   deleteSession: (info: DeleteSessionTarget) => Promise<void>;
+  renameSession: (target: RenameSessionTarget, title: string) => Promise<void>;
   resumeSession: (info: SessionInfo) => Promise<void>;
   resolvePermission: (response: RequestPermissionResponse) => void;
   resolveElicitation: (response: CreateElicitationResponse) => void;
@@ -130,11 +137,15 @@ export function useAgent(): AgentState {
     setElicitation(undefined);
   }, []);
 
+  // Set below, once the history hook exists: a turn end is when the engine
+  // finishes writing the session file, so the sidebar's list is stale until then.
+  const refreshListRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const onTurnComplete = useCallback((kind: "reply" | "compaction") => {
     void notifyWhenUnfocused(
       kind === "compaction" ? "Compaction complete" : "Claude finished",
       kind === "compaction" ? "Your conversation is ready to continue." : "Your response is ready.",
     );
+    void refreshListRef.current();
   }, []);
 
   // onReset runs before a reconnect clears the store; it also tells the
@@ -162,12 +173,21 @@ export function useAgent(): AgentState {
     onReset,
   });
 
-  notifyResetRef.current = useOpenSessionsPersistence(
+  refreshListRef.current = history.refreshList;
+
+  notifyResetRef.current = useLastSessionPersistence(
     connection.status,
     sessions.sessions,
     sessions.activeId,
-    history.restoreSessions,
+    history.restoreLast,
   );
+
+  // The sidebar is driven by this list, so it has to be there from the moment
+  // the connection is up, not just after the first History click.
+  useEffect(() => {
+    if (connection.status !== "connected") return;
+    void history.refreshList();
+  }, [connection.status, history.refreshList]);
 
   const active = activeSession(sessions);
 
@@ -221,8 +241,10 @@ export function useAgent(): AgentState {
     sendPrompt: actions.sendPrompt,
     cancel: actions.cancel,
     setConfig: actions.setConfig,
-    listSessions: history.listSessions,
+    sessionList: history.list,
+    refreshSessionList: history.refreshList,
     deleteSession: history.deleteSession,
+    renameSession: history.renameSession,
     resumeSession: history.resumeSession,
     resolvePermission,
     resolveElicitation,

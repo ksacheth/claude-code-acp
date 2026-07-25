@@ -1,32 +1,88 @@
-import type { SessionState } from "../session/sessions";
+import { useState } from "react";
+
+import { filterTree, type ChatEntry, type SidebarTree } from "../session/projects";
+import { ChatRow } from "./ChatRow";
+import { ProjectGroup } from "./ProjectGroup";
 import { SidebarToggleButton } from "./SidebarToggleButton";
 
-interface SidebarProps {
-  sessions: SessionState[];
+const NO_CHATS = "Start a chat and it will appear here.";
+
+export interface SidebarProps {
+  tree: SidebarTree;
+  /// True until the persisted list has arrived, so an empty tree can be told
+  /// apart from one that has not loaded.
+  loading: boolean;
   activeId?: string;
-  onSelect: (id: string) => void;
-  onNew: () => void;
-  onHistory: () => void;
+  /// Project directories whose chats are showing.
+  expanded: Set<string>;
+  nowMs: number;
+  disabled: boolean;
+  onToggleProject: (cwd: string) => void;
+  onRenameProject: (cwd: string, label: string) => void;
+  onSelectChat: (chat: ChatEntry) => void;
+  onRenameChat: (chat: ChatEntry, title: string) => void;
+  onDeleteChat: (chat: ChatEntry) => void;
+  onNewChat: () => void;
+  onNewProject: () => void;
   onSettings: () => void;
   onCollapse: () => void;
-  onDelete: (session: SessionState) => void;
-  disabled: boolean;
 }
 
-/// The session list: one entry per open session (title + directory, active
-/// highlighted, a dot while its turn is streaming) plus New-session, History,
-/// and Settings.
+/// Which row is being renamed. Chats and projects share the editor, so the key is
+/// namespaced: chat ids and directory paths could otherwise collide.
+type RenameTarget = { kind: "chat"; id: string } | { kind: "project"; cwd: string };
+
+function isRenaming(target: RenameTarget | undefined, kind: RenameTarget["kind"], key: string) {
+  if (!target || target.kind !== kind) return false;
+  return target.kind === "chat" ? target.id === key : target.cwd === key;
+}
+
+/// Every chat the app knows about: the ones with no project first, flat, then one
+/// collapsible group per project directory. This is the whole session browser, so
+/// past conversations are visible without opening anything, and a chat loads only
+/// when it is selected.
 export function Sidebar({
-  sessions,
+  tree,
+  loading,
   activeId,
-  onSelect,
-  onNew,
-  onHistory,
+  expanded,
+  nowMs,
+  disabled,
+  onToggleProject,
+  onRenameProject,
+  onSelectChat,
+  onRenameChat,
+  onDeleteChat,
+  onNewChat,
+  onNewProject,
   onSettings,
   onCollapse,
-  onDelete,
-  disabled,
 }: SidebarProps) {
+  const [query, setQuery] = useState("");
+  const [renaming, setRenaming] = useState<RenameTarget>();
+
+  const searching = query.trim().length > 0;
+  const filtered = filterTree(tree, query);
+  const empty = filtered.loose.length === 0 && filtered.projects.length === 0;
+
+  const chatRow = (chat: ChatEntry) => (
+    <ChatRow
+      key={chat.id}
+      chat={chat}
+      active={chat.id === activeId}
+      nowMs={nowMs}
+      renaming={isRenaming(renaming, "chat", chat.id)}
+      onSelect={() => onSelectChat(chat)}
+      onStartRename={() => setRenaming({ kind: "chat", id: chat.id })}
+      onRename={(title) => {
+        setRenaming(undefined);
+        onRenameChat(chat, title);
+      }}
+      onCancelRename={() => setRenaming(undefined)}
+      onDelete={() => onDeleteChat(chat)}
+    />
+  );
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -37,58 +93,78 @@ export function Sidebar({
         </div>
         <SidebarToggleButton expanded onClick={onCollapse} />
       </div>
+
       <div className="sidebar-actions">
-        <button className="new-session" onClick={onNew} disabled={disabled}>
-          + New session
+        <button className="new-session" onClick={onNewChat} disabled={disabled}>
+          + New chat
         </button>
         <button
-          className="history-button"
-          onClick={onHistory}
+          className="new-project"
+          onClick={onNewProject}
           disabled={disabled}
-          title="Session history"
+          title="New chat in a project folder"
+          aria-label="New chat in a project folder"
         >
-          History
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <path d="M12 11v5M9.5 13.5h5" />
+          </svg>
         </button>
         <button className="settings-button" onClick={onSettings} title="Settings">
           Settings
         </button>
       </div>
-      <div className="sidebar-section-label">Open sessions</div>
-      <ul className="session-list">
-        {sessions.length === 0 && (
-          <li className="session-list-empty">Your active projects will appear here.</li>
+
+      <input
+        className="sidebar-search"
+        type="search"
+        value={query}
+        aria-label="Search chats"
+        placeholder="Search chats"
+        onChange={(event) => setQuery(event.currentTarget.value)}
+      />
+
+      <div className="sidebar-scroll">
+        {empty && (
+          <div className="sidebar-empty">
+            {loading ? "Loading chats…" : searching ? "No chats match." : NO_CHATS}
+          </div>
         )}
-        {sessions.map((session) => (
-          <li
-            key={session.id}
-            className={`session-item${session.id === activeId ? " active" : ""}`}
-          >
-            <button type="button" className="session-open" onClick={() => onSelect(session.id)}>
-              <div className="session-title">
-                {session.title}
-                {session.transcript.turnActive && <span className="session-spinner" />}
-              </div>
-              <div className="session-cwd" title={session.cwd}>
-                {session.cwd}
-              </div>
-            </button>
-            <button
-              type="button"
-              className="session-delete"
-              aria-label={`Delete ${session.title}`}
-              title={`Delete ${session.title}`}
-              onClick={() => onDelete(session)}
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M4 7h16" />
-                <path d="M9 7V4h6v3" />
-                <path d="m7 7 1 13h8l1-13" />
-                <path d="M10 11v5M14 11v5" />
-              </svg>
-            </button>
-          </li>
-        ))}
-      </ul>
+
+        {filtered.loose.length > 0 && (
+          <>
+            <div className="sidebar-section-label">Chats</div>
+            <ul className="chat-list">{filtered.loose.map(chatRow)}</ul>
+          </>
+        )}
+
+        {filtered.projects.length > 0 && (
+          <>
+            <div className="sidebar-section-label">Projects</div>
+            <ul className="project-list">
+              {filtered.projects.map((project) => (
+                <ProjectGroup
+                  key={project.cwd}
+                  project={project}
+                  // A search shows its matches wherever they are; a collapsed
+                  // group would hide the very rows that matched.
+                  expanded={searching || expanded.has(project.cwd)}
+                  renaming={isRenaming(renaming, "project", project.cwd)}
+                  onToggle={() => onToggleProject(project.cwd)}
+                  onStartRename={() => setRenaming({ kind: "project", cwd: project.cwd })}
+                  onRename={(label) => {
+                    setRenaming(undefined);
+                    onRenameProject(project.cwd, label);
+                  }}
+                  onResetName={() => onRenameProject(project.cwd, "")}
+                  onCancelRename={() => setRenaming(undefined)}
+                  chats={project.chats.map(chatRow)}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </aside>
   );
 }

@@ -75,6 +75,14 @@ export async function startAgent(config: SpawnConfig = { env: [] }): Promise<voi
   });
 }
 
+/// Resolve the directory that holds chats with no project, creating it if it does
+/// not exist yet. Without an override this is an app-owned folder in the app's
+/// data directory. See the Rust command for why such a directory has to exist at
+/// all: ACP has no session without a `cwd`.
+export function ensureChatsDir(custom?: string): Promise<string> {
+  return invoke<string>("ensure_chats_dir", { custom: custom ?? null });
+}
+
 /// Start Claude's browser-based login using the same Node, engine path, and
 /// environment that the app uses for its ACP agent.
 export async function startClaudeLogin(config: SpawnConfig): Promise<void> {

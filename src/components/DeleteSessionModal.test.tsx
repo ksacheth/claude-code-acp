@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { emptyTranscript } from "../session/transcript";
 import { DeleteSessionModal } from "./DeleteSessionModal";
 
 describe("DeleteSessionModal", () => {
   it("identifies the session and requires explicit confirmation", () => {
     const html = renderToStaticMarkup(
       <DeleteSessionModal
-        session={{ id: "A", title: "alpha", cwd: "/repo/alpha", transcript: emptyTranscript }}
+        session={{ title: "alpha", cwd: "/repo/alpha" }}
         deleting={false}
         onConfirm={() => {}}
         onCancel={() => {}}

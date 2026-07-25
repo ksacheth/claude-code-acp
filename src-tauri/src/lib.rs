@@ -1,5 +1,6 @@
 mod process;
 
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
@@ -95,6 +96,51 @@ fn default_engine_path() -> Option<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
+/// Pick the directory that holds chats with no project: a non-blank override
+/// wins, otherwise `chats` inside the app's data directory.
+///
+/// The path must be absolute because ACP requires an absolute `cwd`, and because
+/// the frontend compares it against the directories `session/list` reports to
+/// decide which chats are project-less.
+fn resolve_chats_dir(custom: Option<&str>, app_data: &Path) -> Result<PathBuf, String> {
+    match custom.map(str::trim).filter(|path| !path.is_empty()) {
+        Some(path) => {
+            let dir = PathBuf::from(path);
+            if !dir.is_absolute() {
+                return Err(format!(
+                    "the chats directory must be an absolute path, got \"{path}\""
+                ));
+            }
+            Ok(dir)
+        }
+        None => Ok(app_data.join("chats")),
+    }
+}
+
+/// Create the chats directory if it is missing and return its path.
+fn create_chats_dir(dir: &Path) -> Result<String, String> {
+    std::fs::create_dir_all(dir).map_err(|error| {
+        format!("could not create the chats directory {}: {error}", dir.display())
+    })?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
+/// Resolve and create the directory that holds chats with no project.
+///
+/// Every ACP session needs a `cwd`, so "a chat without a project" is really a
+/// chat rooted in one designated directory. Defaulting it to an app-owned empty
+/// folder keeps file tools working while nothing of the user's leaks in and no
+/// stray `CLAUDE.md` changes how the agent behaves.
+#[tauri::command]
+fn ensure_chats_dir(app: AppHandle, custom: Option<String>) -> Result<String, String> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("could not locate the app data directory: {error}"))?;
+    let dir = resolve_chats_dir(custom.as_deref(), &app_data)?;
+    create_chats_dir(&dir)
+}
+
 /// Run Claude's browser-based subscription login through the configured engine.
 /// The command returns after the browser flow completes and credentials have
 /// been written to Claude's normal credential store.
@@ -186,6 +232,74 @@ fn stop_agent(app: &AppHandle) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A unique scratch path per test, so the suite can run in parallel.
+    fn scratch(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("claude-tauri-{name}-{}", std::process::id()))
+    }
+
+    #[test]
+    fn defaults_the_chats_dir_under_the_app_data_dir() {
+        let dir = resolve_chats_dir(None, Path::new("/data/app")).expect("resolve");
+        assert_eq!(dir, PathBuf::from("/data/app/chats"));
+    }
+
+    #[test]
+    fn an_absolute_override_wins_over_the_default() {
+        let dir = resolve_chats_dir(Some("  /elsewhere/chats  "), Path::new("/data/app"))
+            .expect("resolve");
+        assert_eq!(dir, PathBuf::from("/elsewhere/chats"));
+    }
+
+    #[test]
+    fn a_blank_override_falls_back_to_the_default() {
+        for blank in ["", "   "] {
+            let dir = resolve_chats_dir(Some(blank), Path::new("/data/app")).expect("resolve");
+            assert_eq!(dir, PathBuf::from("/data/app/chats"));
+        }
+    }
+
+    #[test]
+    fn a_relative_override_is_rejected() {
+        let error = resolve_chats_dir(Some("chats"), Path::new("/data/app")).expect_err("relative");
+        assert!(error.contains("absolute"), "{error}");
+    }
+
+    #[test]
+    fn creates_the_chats_dir_and_is_idempotent() {
+        let root = scratch("create");
+        let dir = root.join("nested").join("chats");
+        let _ = std::fs::remove_dir_all(&root);
+
+        let path = create_chats_dir(&dir).expect("create");
+        assert!(dir.is_dir());
+        assert_eq!(path, dir.to_string_lossy());
+
+        // A second call on an existing directory must succeed unchanged.
+        assert_eq!(create_chats_dir(&dir).expect("recreate"), path);
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn reports_a_chats_dir_that_cannot_be_created() {
+        let root = scratch("blocked");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root");
+        // A file where a directory needs to be: create_dir_all cannot proceed.
+        let blocker = root.join("chats");
+        std::fs::write(&blocker, b"not a directory").expect("blocker");
+
+        let error = create_chats_dir(&blocker.join("inner")).expect_err("blocked");
+        assert!(error.contains("could not create the chats directory"), "{error}");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -199,6 +313,7 @@ pub fn run() {
             agent_send,
             agent_stop,
             default_engine_path,
+            ensure_chats_dir,
             claude_login,
             claude_auth_status
         ])

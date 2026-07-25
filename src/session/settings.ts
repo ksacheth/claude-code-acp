@@ -34,9 +34,21 @@ export interface Settings {
   theme: ThemeMode;
   /// MCP servers passed to every session.
   mcpServers: McpServerConfig[];
+  /// Where chats with no project live. Absolute; when unset the shell resolves an
+  /// app-owned folder. Every session needs a cwd, so "no project" means "rooted
+  /// in this one directory, and shown without a project header".
+  chatsDir?: string;
+  /// Directories the user does not want listed as projects. Their chats join the
+  /// same flat section as the chats directory's.
+  unlistedDirs: string[];
 }
 
-export const defaultSettings: Settings = { env: [], mcpServers: [], theme: "auto" };
+export const defaultSettings: Settings = {
+  env: [],
+  mcpServers: [],
+  theme: "auto",
+  unlistedDirs: [],
+};
 
 const STORAGE_KEY = "claude-tauri.settings";
 
@@ -74,7 +86,28 @@ export function normalizeSettings(input: unknown): Settings {
     defaultMode: str(raw.defaultMode),
     theme: themeMode(raw.theme),
     mcpServers: mcpServers(raw.mcpServers),
+    chatsDir: str(raw.chatsDir),
+    unlistedDirs: dirList(raw.unlistedDirs),
   };
+}
+
+/// Keep only non-blank strings from a directory list, trimmed and de-duplicated.
+function dirList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const dirs = value.flatMap((entry) =>
+    typeof entry === "string" && entry.trim() ? [entry.trim()] : [],
+  );
+  return [...new Set(dirs)];
+}
+
+/// Split a newline-separated directory list (how the settings form edits it).
+export function parseDirs(text: string): string[] {
+  return [...new Set(text.split("\n").map((line) => line.trim()).filter(Boolean))];
+}
+
+/// Render a directory list back to one path per line (for editing).
+export function formatDirs(dirs: string[]): string {
+  return dirs.join("\n");
 }
 
 function themeMode(value: unknown): ThemeMode {

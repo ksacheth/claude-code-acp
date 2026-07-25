@@ -1,7 +1,6 @@
-import type { SessionState } from "../session/sessions";
-
 interface DeleteSessionModalProps {
-  session: SessionState;
+  /// The chat being deleted: a loaded session or a row from the sidebar list.
+  session: { title: string; cwd: string };
   deleting: boolean;
   error?: string;
   onConfirm: () => void;

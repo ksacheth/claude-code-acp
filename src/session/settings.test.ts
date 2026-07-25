@@ -7,7 +7,9 @@ import {
   normalizeSettings,
   toMcpServers,
   parseArgs,
+  parseDirs,
   parseEnv,
+  formatDirs,
   formatEnv,
   type Settings,
 } from "./settings";
@@ -39,6 +41,8 @@ describe("loadSettings / saveSettings", () => {
       defaultMode: "plan",
       theme: "dark",
       mcpServers: [{ name: "fs", command: "npx", args: ["-y", "server"], env: [] }],
+      chatsDir: "/data/chats",
+      unlistedDirs: ["/Users/me"],
     };
     expect(saveSettings(settings, store)).toBe(true);
     expect(loadSettings(store)).toEqual(settings);
@@ -74,6 +78,33 @@ describe("normalizeSettings", () => {
     expect(normalizeSettings({ theme: "light" }).theme).toBe("light");
     expect(normalizeSettings({ theme: "neon" }).theme).toBe("auto");
     expect(normalizeSettings({}).theme).toBe("auto");
+  });
+
+  it("keeps a chats folder and trims the unlisted directory list", () => {
+    const s = normalizeSettings({
+      chatsDir: "/data/chats",
+      unlistedDirs: ["  /Users/me  ", "/Users/me", "", 7, "/tmp"],
+    });
+    expect(s.chatsDir).toBe("/data/chats");
+    expect(s.unlistedDirs).toEqual(["/Users/me", "/tmp"]);
+  });
+
+  it("treats a blank or non-string chats folder as unset", () => {
+    expect(normalizeSettings({ chatsDir: "" }).chatsDir).toBeUndefined();
+    expect(normalizeSettings({ chatsDir: 7 }).chatsDir).toBeUndefined();
+    expect(normalizeSettings({ unlistedDirs: "nope" }).unlistedDirs).toEqual([]);
+  });
+});
+
+describe("parseDirs / formatDirs", () => {
+  it("splits lines, trimming and de-duplicating", () => {
+    expect(parseDirs("  /a  \n/b\n\n/a\n   ")).toEqual(["/a", "/b"]);
+    expect(parseDirs("")).toEqual([]);
+  });
+
+  it("formatDirs is the inverse of parseDirs for clean input", () => {
+    const text = "/a\n/b";
+    expect(formatDirs(parseDirs(text))).toBe(text);
   });
 });
 

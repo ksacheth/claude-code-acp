@@ -1,6 +1,8 @@
 import {
+  formatDirs,
   formatEnv,
   parseArgs,
+  parseDirs,
   parseEnv,
   type Settings,
   type ThemeMode,
@@ -23,6 +25,8 @@ export interface SettingsForm {
   defaultMode: string;
   theme: ThemeMode;
   envText: string;
+  chatsDir: string;
+  unlistedDirsText: string;
   servers: ServerForm[];
 }
 
@@ -37,6 +41,8 @@ export function settingsToForm(settings: Settings): SettingsForm {
     defaultMode: settings.defaultMode ?? "",
     theme: settings.theme,
     envText: formatEnv(settings.env),
+    chatsDir: settings.chatsDir ?? "",
+    unlistedDirsText: formatDirs(settings.unlistedDirs),
     servers: settings.mcpServers.map((s) => ({
       name: s.name,
       command: s.command,
@@ -56,6 +62,8 @@ export function formToSettings(form: SettingsForm): Settings {
     defaultMode: trimmed(form.defaultMode),
     theme: form.theme,
     env: parseEnv(form.envText),
+    chatsDir: trimmed(form.chatsDir),
+    unlistedDirs: parseDirs(form.unlistedDirsText),
     mcpServers: form.servers
       .map((s) => ({
         name: s.name.trim(),
