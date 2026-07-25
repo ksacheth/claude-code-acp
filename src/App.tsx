@@ -82,6 +82,7 @@ function App() {
           disabled={!connected}
           onToggleProject={sidebar.toggleProject}
           onRenameProject={sidebar.renameProject}
+          onToggleProjectHidden={sidebar.toggleProjectHidden}
           // Selecting resumes, which activates an already-loaded chat and loads
           // the rest on demand: that is what keeps launch off the critical path.
           onSelectChat={(chat) =>

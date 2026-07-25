@@ -8,6 +8,7 @@ import {
   filterTree,
   normalizeDir,
   renamedTitle,
+  visibleTree,
   type TreeInput,
 } from "./projects";
 import { emptyTranscript } from "./transcript";
@@ -29,7 +30,14 @@ function open(id: string, cwd: string, overrides: Partial<SessionState> = {}): S
 }
 
 function input(overrides: Partial<TreeInput> = {}): TreeInput {
-  return { persisted: [], open: [], aliases: {}, unlistedDirs: [], ...overrides };
+  return {
+    persisted: [],
+    open: [],
+    aliases: {},
+    unlistedDirs: [],
+    hiddenDirs: [],
+    ...overrides,
+  };
 }
 
 describe("normalizeDir", () => {
@@ -267,6 +275,76 @@ describe("allChats", () => {
       }),
     );
     expect(allChats(tree).map((c) => c.id)).toEqual(["s2", "s1"]);
+  });
+});
+
+describe("buildSidebarTree hidden projects", () => {
+  it("flags a hidden project without removing it from the tree", () => {
+    const tree = buildSidebarTree(
+      input({
+        persisted: [persisted("s1", "/work/app"), persisted("s2", "/work/junk")],
+        hiddenDirs: ["/work/junk"],
+      }),
+    );
+    expect(tree.projects.map((p) => [p.cwd, p.hidden])).toEqual(
+      expect.arrayContaining([
+        ["/work/app", false],
+        ["/work/junk", true],
+      ]),
+    );
+  });
+
+  it("matches a hidden path that differs only by a trailing slash", () => {
+    const tree = buildSidebarTree(
+      input({ persisted: [persisted("s1", "/work/junk")], hiddenDirs: ["/work/junk/"] }),
+    );
+    expect(tree.projects[0].hidden).toBe(true);
+  });
+
+  it("ignores blank entries in the hidden list", () => {
+    const tree = buildSidebarTree(
+      input({ persisted: [persisted("s1", "/work/app")], hiddenDirs: ["", "  "] }),
+    );
+    expect(tree.projects[0].hidden).toBe(false);
+  });
+});
+
+describe("visibleTree", () => {
+  const tree = buildSidebarTree(
+    input({
+      persisted: [
+        persisted("s1", "/work/app", "Kept"),
+        persisted("s2", "/work/junk", "Buried"),
+        persisted("s3", "/data/chats", "Loose"),
+      ],
+      chatsDir: "/data/chats",
+      hiddenDirs: ["/work/junk"],
+    }),
+  );
+
+  it("drops hidden projects", () => {
+    expect(visibleTree(tree, false).projects.map((p) => p.cwd)).toEqual(["/work/app"]);
+  });
+
+  it("keeps hidden projects while they are revealed", () => {
+    expect(visibleTree(tree, true)).toBe(tree);
+  });
+
+  it("never hides the project holding the active chat", () => {
+    expect(
+      visibleTree(tree, false, "s2")
+        .projects.map((p) => p.cwd)
+        .sort(),
+    ).toEqual(["/work/app", "/work/junk"]);
+  });
+
+  it("leaves loose chats alone, since hiding is per project", () => {
+    expect(visibleTree(tree, false).loose.map((c) => c.title)).toEqual(["Loose"]);
+  });
+
+  it("returns the same tree when nothing is hidden", () => {
+    const plain = buildSidebarTree(input({ persisted: [persisted("s1", "/work/app")] }));
+    expect(visibleTree(plain, false)).toBe(plain);
   });
 });
 

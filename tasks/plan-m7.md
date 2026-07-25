@@ -4,11 +4,11 @@ Beyond `SPEC.md` §2 M0–M6 (all shipped). The sidebar becomes the whole sessio
 browser: chats grouped under the project directory they belong to, a flat
 `Chats` section for chats with no project, rename for both, and lazy resume.
 
-**Status: M7 COMPLETE.** All five tasks landed. 201 app unit tests (up from 181)
-+ 12 Rust (up from 6) + 628 engine, all green; app and engine builds pass. Code
-Health: `App.tsx` improved (complexity 24 → 22), `Sidebar.tsx` and
-`projectPrefs.ts` refactored clean; four findings consciously overruled (see
-"Code Health decisions" at the end).
+**Status: M7 COMPLETE.** All five tasks landed, plus per-project hiding. 221 app
+unit tests (up from 181) + 12 Rust (up from 6) + 628 engine, all green; app and
+engine builds pass. Code Health: `App.tsx` improved (complexity 24 → 22),
+`Sidebar.tsx` and `projectPrefs.ts` refactored clean; four findings consciously
+overruled (see "Code Health decisions" at the end).
 
 Inspiration: the Codex sidebar (collapsible project folders with their chats
 nested) and the ChatGPT `Recents` list (chats with no project at all).
@@ -139,6 +139,11 @@ never-prompted session has no file on disk worth restoring.
   chat's project.
 - Chat rows: title, relative time, streaming dot, hover `...` (rename, delete).
 - Flat `Chats` section above the projects, no folder header.
+- Hiding: a project's `...` offers Hide/Unhide, and a `Show N hidden` control at
+  the bottom reveals them dimmed. Presentation only (a `hidden` list in
+  `projectPrefs`), so nothing is deleted and the chats return with the project.
+  A hidden project holding the active chat is always shown, since an invisible
+  selection reads as a bug.
 - Filter box at the top; `HistoryBrowser` deleted.
 - **Verify:** component tests for group rendering, expand/collapse, filtering,
   rename commit/cancel, and that clicking an unloaded chat resumes it.
@@ -150,7 +155,9 @@ Refactored in response to the safeguard: `useSessionHistory` (13 → 9) gained a
 `Sidebar.tsx` (12 → clear) dropped a duplicated expanded-check and moved a
 project's rows into `ProjectGroup`; `projectPrefs.ts` (clear) split its
 normalizer into `aliasMap`/`pathList`/`isRecord`; the chats settings fields moved
-into `ChatsSettingsSection`.
+into `ChatsSettingsSection`. Adding hiding pushed `Sidebar.tsx` back to 10 and
+then over 120 lines, fixed by extracting the nested empty-state ternary into a
+tested `emptyMessage` and the fixed top into `SidebarHeader`.
 
 Consciously overruled, all marginal and at or just over threshold:
 
@@ -163,7 +170,8 @@ Consciously overruled, all marginal and at or just over threshold:
   state mid-reconnect, write dedupe). The two effects share `hydratedRef`, so
   splitting them would mean threading a ref between hooks.
 - **`SettingsModal` LOC 134 → 139.** Down from 159 after the extraction; the
-  remainder is the component call itself.
+  remainder is the component call itself. `App.tsx` is the same story at +1 line
+  for one new prop, reported `stable`.
 - **`sessions.ts` mean complexity 4.25 → 4.38.** Reported `stable`, not a
   regression: one small `setTitle` case in a switch.
 

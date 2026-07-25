@@ -1,14 +1,17 @@
-/// How the user has arranged the sidebar: per-project display names and which
-/// groups are open. Keyed by project directory, since that is a project's
-/// identity (a chat's project *is* its cwd).
+/// How the user has arranged the sidebar: per-project display names, which
+/// groups are open, and which are hidden. Keyed by project directory, since that
+/// is a project's identity (a chat's project *is* its cwd).
 export interface ProjectPrefs {
   /// cwd → display label. A project with no entry shows its basename.
   aliases: Record<string, string>;
   /// Project directories whose group is expanded.
   expanded: string[];
+  /// Project directories kept out of the tree. Hiding is presentation only:
+  /// nothing is deleted, and the chats come back with the project.
+  hidden: string[];
 }
 
-export const emptyProjectPrefs: ProjectPrefs = { aliases: {}, expanded: [] };
+export const emptyProjectPrefs: ProjectPrefs = { aliases: {}, expanded: [], hidden: [] };
 
 const STORAGE_KEY = "claude-tauri.projectPrefs";
 
@@ -39,7 +42,11 @@ export function saveProjectPrefs(
 /// de-duplicated list of expanded paths.
 export function normalizeProjectPrefs(input: unknown): ProjectPrefs {
   const raw = (input ?? {}) as Record<string, unknown>;
-  return { aliases: aliasMap(raw.aliases), expanded: pathList(raw.expanded) };
+  return {
+    aliases: aliasMap(raw.aliases),
+    expanded: pathList(raw.expanded),
+    hidden: pathList(raw.hidden),
+  };
 }
 
 /// A record, as opposed to null, an array, or a primitive. Stored data is
@@ -78,8 +85,17 @@ export function withAlias(prefs: ProjectPrefs, cwd: string, label: string): Proj
 
 /// Toggle whether a project's group is expanded.
 export function withToggledExpanded(prefs: ProjectPrefs, cwd: string): ProjectPrefs {
-  const expanded = prefs.expanded.includes(cwd)
-    ? prefs.expanded.filter((entry) => entry !== cwd)
-    : [...prefs.expanded, cwd];
-  return { ...prefs, expanded };
+  return { ...prefs, expanded: toggle(prefs.expanded, cwd) };
+}
+
+/// Toggle whether a project is hidden from the tree.
+export function withToggledHidden(prefs: ProjectPrefs, cwd: string): ProjectPrefs {
+  return { ...prefs, hidden: toggle(prefs.hidden, cwd) };
+}
+
+/// Add `entry` to a list, or drop it when already present.
+function toggle(entries: string[], entry: string): string[] {
+  return entries.includes(entry)
+    ? entries.filter((existing) => existing !== entry)
+    : [...entries, entry];
 }

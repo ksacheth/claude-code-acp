@@ -21,6 +21,9 @@ export interface ProjectGroup {
   /// What the row shows: the user's alias, else the directory's basename.
   label: string;
   chats: ChatEntry[];
+  /// Marked hidden by the user. Still in the tree so it can be counted and
+  /// revealed; `visibleTree` is what drops it.
+  hidden: boolean;
 }
 
 /// The sidebar's whole contents: chats with no project first (flat, no folder
@@ -44,6 +47,8 @@ export interface TreeInput {
   chatsDir?: string;
   /// Directories the user does not want shown as projects.
   unlistedDirs: string[];
+  /// Project directories the user has hidden from the tree.
+  hiddenDirs: string[];
 }
 
 /// Strip a trailing slash so `/a/b` and `/a/b/` compare equal. Paths reach us
@@ -138,15 +143,35 @@ export function buildSidebarTree(input: TreeInput): SidebarTree {
     else byProject.set(chat.cwd, [chat]);
   }
 
+  const hiddenDirs = new Set(input.hiddenDirs.map(normalizeDir).filter(Boolean));
   const projects = [...byProject.entries()].map(([cwd, chats]) => ({
     cwd,
     label: input.aliases[cwd]?.trim() || titleFromCwd(cwd),
     chats: chats.sort(byRecency),
+    hidden: hiddenDirs.has(cwd),
   }));
   // Each group's first chat is its newest, so groups order by that same key.
   projects.sort((a, b) => byRecency(a.chats[0], b.chats[0]));
 
   return { loose: loose.sort(byRecency), projects };
+}
+
+/// Drop hidden projects, unless `showHidden` is revealing them.
+///
+/// A hidden project holding the active chat is always kept: hiding is for
+/// decluttering, and a selection you cannot see would just look like a bug.
+export function visibleTree(
+  tree: SidebarTree,
+  showHidden: boolean,
+  activeId?: string,
+): SidebarTree {
+  if (showHidden || !tree.projects.some((project) => project.hidden)) return tree;
+  return {
+    ...tree,
+    projects: tree.projects.filter(
+      (project) => !project.hidden || project.chats.some((chat) => chat.id === activeId),
+    ),
+  };
 }
 
 /// Filter the tree to what matches `query` (case-insensitive, on chat titles and

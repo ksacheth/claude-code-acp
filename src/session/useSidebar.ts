@@ -3,7 +3,13 @@ import type { SessionInfo } from "@agentclientprotocol/sdk";
 
 import { ensureChatsDir } from "../acp/tauriChannel";
 import { buildSidebarTree, expandedWithActive, type SidebarTree } from "./projects";
-import { loadProjectPrefs, saveProjectPrefs, withAlias, withToggledExpanded } from "./projectPrefs";
+import {
+  loadProjectPrefs,
+  saveProjectPrefs,
+  withAlias,
+  withToggledExpanded,
+  withToggledHidden,
+} from "./projectPrefs";
 import type { SessionState } from "./sessions";
 import type { Settings } from "./settings";
 
@@ -18,6 +24,8 @@ export interface SidebarModel {
   toggleProject: (cwd: string) => void;
   /// Set a project's display label, or clear it when `label` is blank.
   renameProject: (cwd: string, label: string) => void;
+  /// Hide a project from the tree, or bring a hidden one back.
+  toggleProjectHidden: (cwd: string) => void;
 }
 
 /// Everything the sidebar renders from: the grouped tree, which groups are open,
@@ -58,8 +66,9 @@ export function useSidebar(
         aliases: prefs.aliases,
         chatsDir,
         unlistedDirs: settings.unlistedDirs,
+        hiddenDirs: prefs.hidden,
       }),
-    [sessionList, sessions, prefs.aliases, chatsDir, settings.unlistedDirs],
+    [sessionList, sessions, prefs.aliases, prefs.hidden, chatsDir, settings.unlistedDirs],
   );
 
   const expanded = useMemo(
@@ -82,5 +91,10 @@ export function useSidebar(
     [prefs, update],
   );
 
-  return { tree, expanded, chatsDir, toggleProject, renameProject };
+  const toggleProjectHidden = useCallback(
+    (cwd: string) => update(withToggledHidden(prefs, cwd)),
+    [prefs, update],
+  );
+
+  return { tree, expanded, chatsDir, toggleProject, renameProject, toggleProjectHidden };
 }

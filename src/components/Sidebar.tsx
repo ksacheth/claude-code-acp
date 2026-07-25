@@ -1,11 +1,17 @@
 import { useState } from "react";
 
-import { filterTree, type ChatEntry, type SidebarTree } from "../session/projects";
+import { filterTree, visibleTree, type ChatEntry, type SidebarTree } from "../session/projects";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";
-import { SidebarToggleButton } from "./SidebarToggleButton";
+import { SidebarHeader } from "./SidebarHeader";
 
-const NO_CHATS = "Start a chat and it will appear here.";
+/// What to say when no rows are showing. "No chats" and "not loaded yet" and
+/// "nothing matched your search" are three different situations.
+export function emptyMessage(loading: boolean, searching: boolean): string {
+  if (loading) return "Loading chats…";
+  if (searching) return "No chats match.";
+  return "Start a chat and it will appear here.";
+}
 
 export interface SidebarProps {
   tree: SidebarTree;
@@ -19,6 +25,7 @@ export interface SidebarProps {
   disabled: boolean;
   onToggleProject: (cwd: string) => void;
   onRenameProject: (cwd: string, label: string) => void;
+  onToggleProjectHidden: (cwd: string) => void;
   onSelectChat: (chat: ChatEntry) => void;
   onRenameChat: (chat: ChatEntry, title: string) => void;
   onDeleteChat: (chat: ChatEntry) => void;
@@ -50,6 +57,7 @@ export function Sidebar({
   disabled,
   onToggleProject,
   onRenameProject,
+  onToggleProjectHidden,
   onSelectChat,
   onRenameChat,
   onDeleteChat,
@@ -60,9 +68,15 @@ export function Sidebar({
 }: SidebarProps) {
   const [query, setQuery] = useState("");
   const [renaming, setRenaming] = useState<RenameTarget>();
+  // Revealing hidden projects is a temporary peek, not a saved preference.
+  const [showHidden, setShowHidden] = useState(false);
 
   const searching = query.trim().length > 0;
-  const filtered = filterTree(tree, query);
+  // Hide before filtering, so the count does not shift as the query is typed.
+  const visible = visibleTree(tree, showHidden, activeId);
+  const anyHidden = tree.projects.some((project) => project.hidden);
+  const hiddenCount = tree.projects.length - visible.projects.length;
+  const filtered = filterTree(visible, query);
   const empty = filtered.loose.length === 0 && filtered.projects.length === 0;
 
   const chatRow = (chat: ChatEntry) => (
@@ -85,51 +99,18 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-mark">C</div>
-        <div className="sidebar-brand-copy">
-          <div className="brand-name">Claude Workspace</div>
-          <div className="brand-subtitle">Local ACP client</div>
-        </div>
-        <SidebarToggleButton expanded onClick={onCollapse} />
-      </div>
-
-      <div className="sidebar-actions">
-        <button className="new-session" onClick={onNewChat} disabled={disabled}>
-          + New chat
-        </button>
-        <button
-          className="new-project"
-          onClick={onNewProject}
-          disabled={disabled}
-          title="New chat in a project folder"
-          aria-label="New chat in a project folder"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <path d="M12 11v5M9.5 13.5h5" />
-          </svg>
-        </button>
-        <button className="settings-button" onClick={onSettings} title="Settings">
-          Settings
-        </button>
-      </div>
-
-      <input
-        className="sidebar-search"
-        type="search"
-        value={query}
-        aria-label="Search chats"
-        placeholder="Search chats"
-        onChange={(event) => setQuery(event.currentTarget.value)}
+      <SidebarHeader
+        query={query}
+        disabled={disabled}
+        onQueryChange={setQuery}
+        onNewChat={onNewChat}
+        onNewProject={onNewProject}
+        onSettings={onSettings}
+        onCollapse={onCollapse}
       />
 
       <div className="sidebar-scroll">
-        {empty && (
-          <div className="sidebar-empty">
-            {loading ? "Loading chats…" : searching ? "No chats match." : NO_CHATS}
-          </div>
-        )}
+        {empty && <div className="sidebar-empty">{emptyMessage(loading, searching)}</div>}
 
         {filtered.loose.length > 0 && (
           <>
@@ -158,11 +139,22 @@ export function Sidebar({
                   }}
                   onResetName={() => onRenameProject(project.cwd, "")}
                   onCancelRename={() => setRenaming(undefined)}
+                  onToggleHidden={() => onToggleProjectHidden(project.cwd)}
                   chats={project.chats.map(chatRow)}
                 />
               ))}
             </ul>
           </>
+        )}
+
+        {anyHidden && (
+          <button
+            type="button"
+            className="show-hidden"
+            onClick={() => setShowHidden((shown) => !shown)}
+          >
+            {showHidden ? "Hide hidden projects" : `Show ${hiddenCount} hidden`}
+          </button>
         )}
       </div>
     </aside>

@@ -12,6 +12,7 @@ interface ProjectGroupProps {
   onRename: (label: string) => void;
   onResetName: () => void;
   onCancelRename: () => void;
+  onToggleHidden: () => void;
   /// The project's chat rows, rendered only while it is expanded.
   chats: ReactNode;
 }

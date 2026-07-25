@@ -11,13 +11,15 @@ interface ProjectRowProps {
   onRename: (label: string) => void;
   onResetName: () => void;
   onCancelRename: () => void;
+  onToggleHidden: () => void;
 }
 
 /// A project's folder row: click to expand or collapse its chats.
 ///
-/// Renaming a project only changes what this row shows. A chat's project is its
-/// working directory, so the directory itself is never touched; "Reset name"
-/// drops the label and falls back to the directory's own name.
+/// Renaming a project only changes what this row shows, and hiding one only
+/// keeps it out of the tree. A chat's project is its working directory, so
+/// neither touches the directory or a single conversation: "Reset name" falls
+/// back to the directory's own name, and "Unhide" brings the folder back.
 export function ProjectRow({
   project,
   expanded,
@@ -27,10 +29,11 @@ export function ProjectRow({
   onRename,
   onResetName,
   onCancelRename,
+  onToggleHidden,
 }: ProjectRowProps) {
   const chatCount = project.chats.length;
   return (
-    <div className="project-row">
+    <div className={`project-row${project.hidden ? " hidden-project" : ""}`}>
       {renaming ? (
         <InlineRename
           initial={project.label}
@@ -61,6 +64,7 @@ export function ProjectRow({
             items={[
               { label: "Rename", onSelect: onStartRename },
               { label: "Reset name", onSelect: onResetName },
+              { label: project.hidden ? "Unhide" : "Hide", onSelect: onToggleHidden },
             ]}
           />
         </>

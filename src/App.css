@@ -1232,6 +1232,36 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* A hidden project only appears while revealed (or when it holds the active
+   chat), so it is dimmed to read as an exception to the list. */
+.project-row.hidden-project .project-label,
+.project-row.hidden-project .project-icon {
+  opacity: 0.55;
+}
+
+.project-row.hidden-project .project-label {
+  font-style: italic;
+}
+
+.show-hidden {
+  display: block;
+  width: calc(100% - 1.3em);
+  margin: 0.5em 0.65em 0;
+  padding: 0.45em 0.5em;
+  border: 1px dashed var(--border-strong);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.74em;
+  text-align: left;
+}
+
+.show-hidden:not(:disabled):hover {
+  border-style: solid;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
 .row-menu {
   position: relative;
   flex: none;

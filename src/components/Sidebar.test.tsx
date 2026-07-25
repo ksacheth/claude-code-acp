@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { buildSidebarTree, type ChatEntry, type SidebarTree } from "../session/projects";
 import { emptyTranscript } from "../session/transcript";
-import { Sidebar, type SidebarProps } from "./Sidebar";
+import { emptyMessage, Sidebar, type SidebarProps } from "./Sidebar";
 
 const NOW = Date.parse("2026-07-25T12:00:00Z");
 
@@ -46,6 +46,7 @@ const tree = buildSidebarTree({
   aliases: {},
   chatsDir: "/data/chats",
   unlistedDirs: [],
+  hiddenDirs: [],
 });
 
 function render(overrides: Partial<SidebarProps> = {}) {
@@ -58,6 +59,7 @@ function render(overrides: Partial<SidebarProps> = {}) {
     disabled: false,
     onToggleProject: () => {},
     onRenameProject: () => {},
+    onToggleProjectHidden: () => {},
     onSelectChat: () => {},
     onRenameChat: () => {},
     onDeleteChat: () => {},
@@ -109,13 +111,14 @@ describe("Sidebar", () => {
     expect(html).toContain("1d ago");
   });
 
-  it("offers rename and delete on every chat, and rename on every project", () => {
+  it("offers rename and delete on every chat, and rename or hide on every project", () => {
     const html = render();
     expect(html).toContain('aria-label="Options for fix the parser"');
     expect(html).toContain('aria-label="Options for alpha"');
     expect(html).toContain("Rename");
     expect(html).toContain("Delete");
     expect(html).toContain("Reset name");
+    expect(html).toContain(">Hide<");
   });
 
   it("offers a chat with no project and a chat in a project folder", () => {
@@ -150,6 +153,7 @@ describe("Sidebar chat titles", () => {
       open: [],
       aliases: {},
       unlistedDirs: [],
+      hiddenDirs: [],
     });
     const html = render({ tree: untitled, expanded: new Set(["/repo/gamma"]), activeId: "X" });
     // Both the project row and the chat row show the folder name.
@@ -162,10 +166,66 @@ describe("Sidebar chat titles", () => {
       open: [],
       aliases: { "/repo/gamma": "Gamma Rays" },
       unlistedDirs: [],
+      hiddenDirs: [],
     });
     const html = render({ tree: aliased });
     expect(html).toContain("Gamma Rays");
     expect(html).toContain('aria-label="Options for Gamma Rays"');
+  });
+});
+
+describe("emptyMessage", () => {
+  it("distinguishes loading, no matches, and no chats at all", () => {
+    expect(emptyMessage(true, false)).toBe("Loading chats…");
+    expect(emptyMessage(false, true)).toBe("No chats match.");
+    expect(emptyMessage(false, false)).toBe("Start a chat and it will appear here.");
+  });
+
+  it("reports loading before reporting an empty search", () => {
+    expect(emptyMessage(true, true)).toBe("Loading chats…");
+  });
+});
+
+describe("Sidebar hidden projects", () => {
+  const withHidden = buildSidebarTree({
+    persisted: [
+      { sessionId: "A", cwd: "/repo/alpha", title: "kept chat" },
+      { sessionId: "B", cwd: "/repo/junk", title: "buried chat" },
+    ],
+    open: [],
+    aliases: {},
+    unlistedDirs: [],
+    hiddenDirs: ["/repo/junk"],
+  });
+
+  it("leaves a hidden project and its chats out of the tree", () => {
+    const html = render({ tree: withHidden, activeId: "A" });
+    expect(html).toContain("alpha");
+    expect(html).not.toContain("junk");
+    expect(html).not.toContain("buried chat");
+  });
+
+  it("offers a control to reveal them, counting only what is hidden", () => {
+    expect(render({ tree: withHidden, activeId: "A" })).toContain("Show 1 hidden");
+  });
+
+  it("offers no reveal control when nothing is hidden", () => {
+    expect(render()).not.toContain("show-hidden");
+  });
+
+  it("keeps a hidden project visible when it holds the active chat", () => {
+    const html = render({ tree: withHidden, activeId: "B", expanded: new Set(["/repo/junk"]) });
+    expect(html).toContain("junk");
+    expect(html).toContain("buried chat");
+    // Nothing is being withheld, so the count reflects that.
+    expect(html).toContain("Show 0 hidden");
+  });
+
+  it("marks a revealed project so it reads as hidden", () => {
+    // The reveal toggle is internal state, so this checks the class the tree
+    // applies once a hidden project is rendered at all.
+    const html = render({ tree: withHidden, activeId: "B" });
+    expect(html).toContain("hidden-project");
   });
 });
 
