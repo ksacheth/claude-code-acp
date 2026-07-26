@@ -64,6 +64,7 @@ function render(overrides: Partial<SidebarProps> = {}) {
     onRenameChat: () => {},
     onDeleteChat: () => {},
     onNewChat: () => {},
+    onNewChatInProject: () => {},
     onNewProject: () => {},
     onSettings: () => {},
     onCollapse: () => {},
@@ -127,6 +128,12 @@ describe("Sidebar", () => {
     expect(html).toContain('aria-label="New chat in a project folder"');
   });
 
+  it("offers a chat in each project, without a folder picker", () => {
+    const html = render();
+    expect(html).toContain('aria-label="New chat in alpha"');
+    expect(html).toContain('aria-label="New chat in beta"');
+  });
+
   it("provides a search field and a control to collapse the sidebar", () => {
     const html = render();
     expect(html).toContain('aria-label="Search chats"');
@@ -142,7 +149,9 @@ describe("Sidebar", () => {
   });
 
   it("disables starting a chat while disconnected", () => {
-    expect(render({ disabled: true })).toMatch(/new-session[^>]*disabled/);
+    const html = render({ disabled: true });
+    expect(html).toMatch(/new-session[^>]*disabled/);
+    expect(html).toMatch(/project-new-chat[^>]*disabled/);
   });
 });
 

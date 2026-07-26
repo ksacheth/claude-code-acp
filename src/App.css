@@ -1232,6 +1232,40 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* "+" starts another chat in this project. It is hidden until the row is
+   hovered or focused, like the row's ··· menu, so a long list stays quiet. */
+.project-new-chat {
+  display: inline-grid;
+  width: 1.9em;
+  height: 1.9em;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.95em;
+  line-height: 1;
+  opacity: 0;
+}
+
+.project-row:hover .project-new-chat,
+.project-row:focus-within .project-new-chat {
+  opacity: 1;
+}
+
+.project-new-chat:not(:disabled):hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+/* Disconnected: there is nothing to start, so the control stays out of the way
+   rather than picking up the filled look every disabled button gets. */
+.project-row .project-new-chat:disabled {
+  background: transparent;
+  opacity: 0;
+}
+
 /* A hidden project only appears while revealed (or when it holds the active
    chat), so it is dimmed to read as an exception to the list. */
 .project-row.hidden-project .project-label,
@@ -1386,6 +1420,7 @@ button:disabled {
 /* Without hover there is no way to reveal a hidden control, so show them all. */
 @media (hover: none) {
   .row-menu-trigger,
+  .project-new-chat:not(:disabled),
   .chat-time {
     opacity: 1;
   }

@@ -30,6 +30,8 @@ export interface SidebarProps {
   onRenameChat: (chat: ChatEntry, title: string) => void;
   onDeleteChat: (chat: ChatEntry) => void;
   onNewChat: () => void;
+  /// Start a chat in a project already in the tree, no picker involved.
+  onNewChatInProject: (cwd: string) => void;
   onNewProject: () => void;
   onSettings: () => void;
   onCollapse: () => void;
@@ -62,6 +64,7 @@ export function Sidebar({
   onRenameChat,
   onDeleteChat,
   onNewChat,
+  onNewChatInProject,
   onNewProject,
   onSettings,
   onCollapse,
@@ -131,7 +134,9 @@ export function Sidebar({
                   // group would hide the very rows that matched.
                   expanded={searching || expanded.has(project.cwd)}
                   renaming={isRenaming(renaming, "project", project.cwd)}
+                  disabled={disabled}
                   onToggle={() => onToggleProject(project.cwd)}
+                  onNewChat={() => onNewChatInProject(project.cwd)}
                   onStartRename={() => setRenaming({ kind: "project", cwd: project.cwd })}
                   onRename={(label) => {
                     setRenaming(undefined);

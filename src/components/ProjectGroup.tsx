@@ -7,7 +7,9 @@ interface ProjectGroupProps {
   project: Group;
   expanded: boolean;
   renaming: boolean;
+  disabled: boolean;
   onToggle: () => void;
+  onNewChat: () => void;
   onStartRename: () => void;
   onRename: (label: string) => void;
   onResetName: () => void;

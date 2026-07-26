@@ -6,7 +6,10 @@ interface ProjectRowProps {
   project: ProjectGroup;
   expanded: boolean;
   renaming: boolean;
+  /// No live connection, so a chat cannot be started right now.
+  disabled: boolean;
   onToggle: () => void;
+  onNewChat: () => void;
   onStartRename: () => void;
   onRename: (label: string) => void;
   onResetName: () => void;
@@ -14,7 +17,9 @@ interface ProjectRowProps {
   onToggleHidden: () => void;
 }
 
-/// A project's folder row: click to expand or collapse its chats.
+/// A project's folder row: click to expand or collapse its chats, or use "+" to
+/// start another chat in that same directory, which is the common way to add to
+/// a project you are already working in.
 ///
 /// Renaming a project only changes what this row shows, and hiding one only
 /// keeps it out of the tree. A chat's project is its working directory, so
@@ -24,7 +29,9 @@ export function ProjectRow({
   project,
   expanded,
   renaming,
+  disabled,
   onToggle,
+  onNewChat,
   onStartRename,
   onRename,
   onResetName,
@@ -58,6 +65,16 @@ export function ProjectRow({
             </svg>
             <span className="project-label">{project.label}</span>
             <span className="project-count">{chatCount}</span>
+          </button>
+          <button
+            type="button"
+            className="project-new-chat"
+            disabled={disabled}
+            title={`New chat in ${project.label}`}
+            aria-label={`New chat in ${project.label}`}
+            onClick={onNewChat}
+          >
+            +
           </button>
           <RowMenu
             label={`Options for ${project.label}`}
