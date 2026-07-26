@@ -11,6 +11,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { Sidebar } from "./components/Sidebar";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { Workspace } from "./components/Workspace";
+import { requestErrorMessage } from "./session/errors";
 import type { ChatEntry } from "./session/projects";
 import { useSidebar } from "./session/useSidebar";
 import { useTheme } from "./session/theme";
@@ -64,7 +65,7 @@ function App() {
       await agent.deleteSession({ sessionId: chatToDelete.id });
       setChatToDelete(undefined);
     } catch (error) {
-      setDeleteChatError(error instanceof Error ? error.message : String(error));
+      setDeleteChatError(requestErrorMessage(error));
     } finally {
       setDeletingChat(false);
     }
@@ -101,6 +102,9 @@ function App() {
             setChatToDelete(chat);
           }}
           onNewChat={() => void agent.newSession(sidebar.chatsDir)}
+          // A project already in the tree has a directory, so this skips the
+          // picker; the new chat becomes active, which expands its group.
+          onNewChatInProject={(cwd) => void agent.newSession(cwd)}
           onNewProject={() => void agent.newSession()}
           onSettings={() => setSettingsOpen(true)}
           onCollapse={() => setSidebarOpen(false)}
