@@ -80,24 +80,24 @@ const LIVE_MODEL_OPTIONS: SessionConfigOption[] = [
       {
         value: "default",
         name: "Default (recommended)",
-        description: "Opus 4.8 with 1M context · Best for everyday, complex tasks",
+        description: "Opus 5 with 1M context · Best for everyday, complex tasks",
       },
       {
         value: "opus[1m]",
-        name: "Opus",
-        description: "Opus 4.8 with 1M context · Best for everyday, complex tasks",
+        name: "Opus (1M context)",
+        description: "Opus 5 with 1M context · Best for everyday, complex tasks",
       },
       {
-        value: "fable",
+        value: "claude-fable-5[1m]",
         name: "Fable",
         description: "Fable 5 · Most capable for your hardest and longest-running tasks",
       },
       { value: "sonnet", name: "Sonnet", description: "Sonnet 5 · Efficient for routine tasks" },
       { value: "haiku", name: "Haiku", description: "Haiku 4.5 · Fastest for quick answers" },
       {
-        value: "opus-4-6",
+        value: "claude-opus-4-6",
         name: "Opus 4.6",
-        description: "Newer version available · select Opus for Opus 4.8",
+        description: "Newer version available · select Opus for Opus 5",
       },
     ],
   } as SessionConfigOption,
@@ -126,6 +126,28 @@ describe("versionedModelName", () => {
 
   it("leaves a name that already carries a version alone", () => {
     expect(versionedModelName("Haiku 4.5", "Haiku 4.5 · Fastest")).toBe("Haiku 4.5");
+    expect(versionedModelName("Opus 4.6 (legacy)", "Newer version available")).toBe(
+      "Opus 4.6 (legacy)",
+    );
+  });
+
+  it("puts the version before a qualifier the name carries", () => {
+    // The digits in "1M" are not a version, and the version the description
+    // states belongs to the family, so it reads "Opus 5 (1M context)".
+    expect(
+      versionedModelName("Opus (1M context)", "Opus 5 with 1M context · Best for everyday"),
+    ).toBe("Opus 5 (1M context)");
+  });
+
+  it("keeps a qualified name bare when the description states no version", () => {
+    expect(versionedModelName("Opus (1M context)", "Best for everyday, complex tasks")).toBe(
+      "Opus (1M context)",
+    );
+    // Default's qualifier must not let it borrow the version of the model it
+    // resolves to, which is what its description describes.
+    expect(
+      versionedModelName("Default (recommended)", "Opus 5 with 1M context · Best for everyday"),
+    ).toBe("Default (recommended)");
   });
 
   it("falls back to the bare name when the version cannot be read", () => {
@@ -152,7 +174,9 @@ describe("selectConfigs model versions", () => {
   it("labels every model row with its version", () => {
     expect(model().options.map((o) => o.name)).toEqual([
       "Default (recommended)",
-      "Opus 4.8",
+      // The engine names this row "Opus (1M context)"; the version goes in front
+      // of the qualifier, not after it.
+      "Opus 5 (1M context)",
       "Fable 5",
       "Sonnet 5",
       "Haiku 4.5",
@@ -165,10 +189,10 @@ describe("selectConfigs model versions", () => {
     expect(model().options.map((o) => o.value)).toEqual([
       "default",
       "opus[1m]",
-      "fable",
+      "claude-fable-5[1m]",
       "sonnet",
       "haiku",
-      "opus-4-6",
+      "claude-opus-4-6",
     ]);
     expect(model().currentValue).toBe("opus[1m]");
   });

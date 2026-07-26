@@ -45,17 +45,39 @@ export function selectConfigs(options?: SessionConfigOption[]): SelectConfig[] {
 /// description the engine already sends rather than hard-coding a model table
 /// that would go stale with every release.
 export function versionedModelName(name: string, description?: string): string {
-  const family = name.trim();
-  // No description to read, or a name that already carries its own version.
-  if (!description || /\d/.test(family)) return family;
-  // The version only counts when it directly follows this row's own family name.
-  // Default repeats the description of whichever model it resolves to, so its
-  // description opens with "Opus 4.8 …"; anchoring on the family name is what
-  // stops Default from being labelled with a version that is not its own.
+  const full = name.trim();
+  if (!description) return full;
+  // Try the row's whole name first: a description may repeat it verbatim, as in
+  // "Opus (Pro) 5 · …".
+  const stated = versionAfter(full, description);
+  if (stated) return `${full} ${stated}`;
+  // Otherwise the name may carry a parenthetical qualifier the description does
+  // not repeat — "Opus (1M context)", described as "Opus 5 with 1M context".
+  // The version belongs to the family, so it goes before the qualifier rather
+  // than at the end: "Opus 5 (1M context)".
+  const qualified = full.match(QUALIFIED_NAME);
+  if (!qualified) return full;
+  const [, family, qualifier] = qualified;
+  const version = versionAfter(family, description);
+  return version ? `${family} ${version} ${qualifier}` : full;
+}
+
+/// A name ending in a parenthetical qualifier, split into the two parts.
+const QUALIFIED_NAME = /^(.*?)\s*(\([^()]*\))$/;
+
+/// The version the description states directly after `family`, if any.
+///
+/// The version only counts when it directly follows that name. Default repeats
+/// the description of whichever model it resolves to, so its description opens
+/// with "Opus 5 …"; anchoring on the family name is what stops Default from
+/// being labelled with a version that is not its own. A family that already
+/// carries a digit states its own version and is left alone.
+function versionAfter(family: string, description: string): string | undefined {
+  if (!family || /\d/.test(family)) return undefined;
   const match = description.match(
     new RegExp(`\\b${escapeRegExp(family)}\\s+(\\d+(?:\\.\\d+)?)`, "i"),
   );
-  return match ? `${family} ${match[1]}` : family;
+  return match?.[1];
 }
 
 function withModelVersion(
